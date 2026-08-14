@@ -1,12 +1,8 @@
 # DeepSeek Harness 源码深度解析
 
-> 一份对 [DeepSeek Harness（`dsh`）](https://github.com/deepseek-ai/deepseek-harness) 的系统性源码深度研究。用工程化的方法做研究：先通读建骨架、全网调研建基线、七维框架逐章剖析、承重判断走 **ratify-loop**、全文走 **review-loop** 审到收敛。
->
-> 源码基线：`0.1.0-rc.5`（developer preview），提交区间 2026-06-10 → 2026-08-13（12,293 commits），219 个 `@deepseek-ai/dsh-*` 包（49 个功能组）。研究日：2026-08-14。
-
 ## 快速导航
 
-- 📌 [总纲 · 技术主线分析](总纲-DeepSeek-Harness技术主线分析.md) —— 一句话主线、源码基线、阅读路径、核心机制速览
+- 📌 [总纲 · 技术主线分析](总纲-DeepSeek-Harness技术主线分析.md) —— 一句话主线、阅读路径、核心机制速览
 - 🌐 [全网调研 · 社区认知地图](全网调研-社区认知地图.md) —— 外部基线、Cordis 血缘、公司理念、争议矩阵、盲区分析
 - 📚 [Part I 理念与使用](#part-i-理念与使用)
 - 🔧 [Part II 源码剖析](#part-ii-源码剖析)
@@ -61,9 +57,7 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 | 19 | [竞品对比与生态定位](Part%20III%20Comparative%20Analysis/19-竞品对比与生态定位.md) | vs Claude Code / Codex / Pi + 生态理念 |
 | 20 | [AI 自举开发与理念映射](Part%20III%20Comparative%20Analysis/20-AI自举开发与理念映射.md) | 12293 commits 轨迹 + 工程纪律 + 公司理念 |
 
-## 方法与免责
+## 免责
 
-- 生成方法与规范见 [scripts/prompt-template.md](scripts/prompt-template.md) 与 [scripts/chapters.yaml](scripts/chapters.yaml)。
-- 本研究由 `git-repo-deepresearch` 工作流（含 ratify-loop / review-loop）产出，审校记录见 [review/](review/)（如有）。
-- 源码归档与静态资产见 [Appendix/](Appendix/)。外部数据（star 数、HN 分数等）随时间变动，正文一律标 `[claimed]`；与源码冲突时以一手源码为准。
+- 附录见 [Appendix/](Appendix/)。外部数据（star 数、HN 分数等）随时间变动，正文一律标 `[claimed]`；与源码冲突时以一手源码为准。
 - 本研究为独立第三方技术分析，非 DeepSeek 官方文档。

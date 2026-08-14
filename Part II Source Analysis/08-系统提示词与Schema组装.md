@@ -4,16 +4,18 @@
 
 ## 一、本质是什么
 
-DeepSeek Harness 里，模型每一步请求的"提示词面"不是一段写死的字符串，而是一次**组装的产物**。承担这次组装的是 core 层的 `@deepseek-ai/dsh-system-prompt` 包，它导出一个 Cordis 服务 `SystemPrompt`，挂在 `ctx.systemPrompt` 上 [verified]（`packages/core/system-prompt/src/index.ts:13-16,338`）。它是一个**注册表**：插件把自己拥有的"提示词事实"注册进来，服务在每步组装时把所有贡献合流、排序、跑一遍协作式瀑布，产出一个 `PromptAssembly`。
+先说结论：DeepSeek Harness 里，模型每一步请求的"提示词面"（就是模型这一步能看到的那段文字加上可调用的工具清单）不是一段写死的字符串，而是一次**组装的产物**。承担这次组装的是 core 层的 `@deepseek-ai/dsh-system-prompt` 包，它导出一个 Cordis 服务 `SystemPrompt`，挂在 `ctx.systemPrompt` 上 [verified]（`packages/core/system-prompt/src/index.ts:13-16,338`）。（Cordis 是这套项目用的插件框架，"服务"可以理解成挂在全局 `ctx` 上、任何插件都能取用的一个共享对象。）
 
-它管四类可注册的贡献 [verified]（`index.ts:381-455`）：
+它的角色是一个**注册表**。打个比方：它像一块公告栏——各个插件把自己拥有的"提示词事实"贴上去，服务在每一步真正要发请求时，把公告栏上所有贴纸收齐、排好序、再跑一遍"大家轮流过目并可修改"的协作式瀑布，最后产出一个 `PromptAssembly`（组装成品）。
 
-- **section**（`PromptSection`）——系统提示词的有序段落；
-- **context**（`PromptContext`）——动态运行时上下文，最终以 user 角色快照落进模型历史；
-- **tools**（tool-schema provider）——本次组装模型可见的工具 Schema 集合；
-- **variable**——段落文本里 `{{name}}` 引用的模板变量。
+它能收四类可注册的贡献 [verified]（`index.ts:381-455`）：
 
-这与总纲的架构命题一致：连"模型看到的提示词"本身都不是内核特权，而是由插件贡献、可组合、可按作用域覆盖的东西。`SystemPrompt` 只拥有两段最基础的文本——固定的 harness 身份行与部署 persona 槽——其余全部来自贡献者 [verified]（`index.ts:356-370`）。
+- **section**（`PromptSection`）——系统提示词里的一个有序段落（比如"你是谁""bash 工具怎么用"各是一段）；
+- **context**（`PromptContext`）——动态运行时上下文，也就是随时会变的现场信息（当前时间、打开了哪些文件等），最终以 user 角色的快照落进模型历史；
+- **tools**（tool-schema provider）——本次组装里模型可见的工具 Schema 集合（每个工具长什么样、收哪些参数）；
+- **variable**——段落文本里用 `{{name}}` 引用的模板变量，组装时才被填进实际值。
+
+这与总纲的架构命题一致：连"模型看到的提示词"本身都不是内核特权，而是由插件贡献、可组合、可按作用域覆盖的东西。`SystemPrompt` 自己只握着两段最基础的文本——固定的 harness 身份行，和留给部署方填 persona 的一个槽位——其余全部来自贡献者 [verified]（`index.ts:356-370`）。对使用者来说，这意味着想改模型看到的某段话，改的是"拥有那段话的那个插件"，而不是去动一个中心大模板。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -45,24 +47,24 @@ flowchart TD
 
 ## 二、核心问题与痛点
 
-一个 agent harness 的提示词面临三重张力。**其一，谁拥有哪段文字？** bash 工具的用法说明该由 bash 包写，plan 模式的说明该由 plan 包写，不能全塞进一个中心模板。**其二，同一份组装要按作用域分叉。** 一个进程里可能同时跑主 agent 和多个 subagent，每个 agent 的 persona、可见工具、可见段落都可能不同，但底层注册表是共享的。**其三，模型看见的必须可复现。** 总纲的"model-visible ⟺ logged"不变量要求：任何进入模型请求的东西都要能从会话日志重建——所以动态上下文不能只是拼进 prompt，而要作为可溯源的快照事件落库。
+一个 agent harness 的提示词面临三重张力。**其一，谁拥有哪段文字？** bash 工具的用法说明理应由 bash 包写，plan 模式的说明理应由 plan 包写，不能全塞进一个中心模板——否则每加一个工具都要回去改那个模板，谁都动它、谁都可能改坏。**其二，同一份组装要按作用域分叉。** 一个进程里可能同时跑主 agent 和多个 subagent，每个 agent 的 persona、可见工具、可见段落都可能不同，但底层注册表是共享的一份——好比同一份原料，要按不同菜谱端出不同的菜。**其三，模型看见的必须可复现。** 总纲的"model-visible ⟺ logged"（凡模型看得见的，都必须被记进日志）不变量要求：任何进入模型请求的东西都要能从会话日志重建——所以动态上下文不能只是临时拼进 prompt 就算了，而要作为可溯源的快照事件落库。
 
-waterfall 组装正是对这三重张力的回答：**贡献分散、组装集中、作用域分叉、渲染可溯源**。
+waterfall（瀑布式）组装正是对这三重张力的回答，一句话概括就是：**贡献分散、组装集中、作用域分叉、渲染可溯源**。
 
 ## 三、解决思路与方案
 
 ### 3.1 瀑布组装的六个阶段
 
-`assemble(context)` 是整章的枢纽 [verified]（`index.ts:467-542`）。它接收一个 merge-extensible 的 `AssembleContext`（携带可选 `scope` 与 `signal`），按固定顺序做六件事：
+`assemble(context)` 是整章的枢纽 [verified]（`index.ts:467-542`）。它接收一个 merge-extensible 的 `AssembleContext`（一个可被各方补充字段的上下文对象，携带可选 `scope` 作用域与 `signal` 取消信号），按固定顺序做六件事：
 
-1. **取作用域链**：`chainLayers(scope)` 拿到全局层 + 作用域链上各层；判断运行时上下文是否被抑制。
-2. **解析变量**：先全局、再沿作用域链"由远及近"求值，近作用域同名变量覆盖全局 [verified]（`index.ts:473-482`）。
-3. **合并段落与上下文**：`merge(scope, …)` 让作用域段落遮蔽同名全局段落。
-4. **采集工具 Schema**：遍历全局 + 作用域的 tool provider，对每个返回的 `parameters` 做 `structuredClone` **脱离**（detach），并累积 `knownNames` 预限制名集 [verified]（`index.ts:487-503`）。
-5. **规范排序**：段落按 `order` 升序；工具按 `orderTools` 施加 `toolOrder` 或退化为字典序 [verified]（`index.ts:164-178,504,529`）。
-6. **跑瀑布**：`ctx.waterfall(scopeTarget(this, scope), 'system-prompt/assemble', assembly, context, …)`，返回值**权威**；之后若存在 `complete` 段落则将其恢复为唯一段落，若上下文被抑制则清空 contexts [verified]（`index.ts:532-542`）。
+1. **取作用域链**：`chainLayers(scope)` 拿到全局层 + 作用域链上各层（像"全局 → 当前 agent"这样一条从远到近的链）；顺带判断运行时上下文是否被抑制。
+2. **解析变量**：先算全局、再沿作用域链"由远及近"求值，近作用域的同名变量覆盖全局 [verified]（`index.ts:473-482`）——即"离得越近说了算"。
+3. **合并段落与上下文**：`merge(scope, …)` 让作用域段落遮蔽同名全局段落（某 agent 想改写某段，就在自己这层放一个同名段盖住全局那段）。
+4. **采集工具 Schema**：遍历全局 + 作用域的 tool provider，对每个返回的 `parameters` 做 `structuredClone` **脱离**（detach，即深拷贝出一份独立副本），并累积 `knownNames` 预限制名集 [verified]（`index.ts:487-503`）。
+5. **规范排序**：段落按 `order` 升序排；工具按 `orderTools` 施加 `toolOrder`，没配就退化为字典序 [verified]（`index.ts:164-178,504,529`）。
+6. **跑瀑布**：`ctx.waterfall(scopeTarget(this, scope), 'system-prompt/assemble', assembly, context, …)`，其返回值**权威**（以瀑布跑完的结果为准）；之后若存在 `complete` 段落则把它恢复为唯一段落，若上下文被抑制则清空 contexts [verified]（`index.ts:532-542`）。
 
-关键设计点是**排序发生在瀑布之前**：段落 order 排序与 `toolOrder` 都是对"注册表贡献了什么"的规范化（注册顺序只是插件加载的偶然产物），瀑布监听器若要再改动列表，则自己负责它输出的确定性 [verified]（README `Config.toolOrder` 条目）。
+关键设计点是**排序发生在瀑布之前**。段落 order 排序与 `toolOrder` 都是对"注册表里贡献了什么"的规范化——因为注册顺序只是插件加载先后的偶然产物，不该让它决定模型看到的次序。至于瀑布监听器若还要再改动列表，那它就得自己对输出的确定性负责 [verified]（README `Config.toolOrder` 条目）。这一步的意义在于：把"排出一个确定次序"和"允许大家协作改写"拆成两件事，谁也不踩谁。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -85,7 +87,7 @@ flowchart TD
 
 ### 3.2 order 波段：谁排在模型眼前
 
-段落顺序由 `order` 数字决定，并有一套波段约定 [verified]（`index.ts:56-61`）：`-100` 是 harness 身份行、`0` 是部署 persona（`PERSONA_SECTION`/`PERSONA_ORDER`）、工具用法指引占 `100–199`。`SystemPrompt` 构造时就注册了身份行与 persona 槽两段，且身份行独立于所选 loop 插件，保证"harness 开场白"稳定 [verified]（`index.ts:356-370`）。
+段落顺序由 `order` 数字决定（数字小的排在前面），并有一套"波段"约定——把号段划给不同用途，就像给楼层分区 [verified]（`index.ts:56-61`）：`-100` 是 harness 身份行、`0` 是部署 persona（`PERSONA_SECTION`/`PERSONA_ORDER`）、工具用法指引占 `100–199` 这一段。`SystemPrompt` 在构造时就先注册了身份行与 persona 槽这两段，而且身份行独立于所选的 loop 插件，保证不管换哪套主循环，"harness 开场白"都稳定不变 [verified]（`index.ts:356-370`）。
 
 > **ratify-note · 为什么用一个中心 `toolOrder` + order 数字，而非每插件权重**
 > - 候选解释：A 中心化列表（`toolOrder` 显式列全，含一个 `<unlisted-tools>` rest 标记）+ 段落 order 数字；B 每个插件自带优先级权重，组装时归并；C 沿注册顺序（什么都不做）。
@@ -96,17 +98,19 @@ flowchart TD
 
 ### 3.3 作用域分叉：一份注册表，多个 agent 视图
 
-注册通过 `ctx.effect()`，落在**调用上下文的作用域层**里（`PromptLayer`/`ScopedLayers`）。`agent.ctx` 上注册的段落/变量只对该 agent 生效并遮蔽同名全局项 [verified]（`index.ts:316-324,381-390`）。工具侧更复杂：`ToolRuntime` 在构造时把自己注册为一个 tool provider——`ctx.systemPrompt.tools(context => this.wireSchemas(context.scope))` [verified]（`packages/core/tools/src/index.ts:832`），于是"某作用域可见哪些工具"由 `view(scope)` 现算：先对**继承面**施加限制（`restrict()` 仅允许作用域内调用），再叠加本层自有注册与保留的 code-mode 传输位 [verified]（`tools/src/index.ts:1152-1192,1071-1096`）。`ToolProviderResult` 因此带两个字段：`schemas`（本次可见集）与 `knownNames`（预限制全集，供 `toolOrder` 校验区分"配错的名字"与"本作用域故意隐藏的已知工具"）[verified]（`index.ts:103-109`；docs/subsystems/system-prompt.md:27-38）。
+注册是通过 `ctx.effect()` 完成的，它会落在**当前调用上下文的作用域层**里（`PromptLayer`/`ScopedLayers`）。在 `agent.ctx` 上注册的段落/变量只对该 agent 生效，并遮蔽掉同名的全局项 [verified]（`index.ts:316-324,381-390`）。工具这一侧更复杂一点：`ToolRuntime` 在构造时把自己注册成一个 tool provider——`ctx.systemPrompt.tools(context => this.wireSchemas(context.scope))` [verified]（`packages/core/tools/src/index.ts:832`）。于是"某个作用域到底能看见哪些工具"不是事先固定的，而是由 `view(scope)` 当场现算：先对**继承面**（从上层继承下来的工具）施加限制——`restrict()` 只允许在本作用域内调用——再叠加本层自己新注册的工具和保留的 code-mode 传输位 [verified]（`tools/src/index.ts:1152-1192,1071-1096`）。
+
+正因如此，`ToolProviderResult` 带了两个字段：`schemas`（本次实际可见的那一集）与 `knownNames`（做限制之前的已知全集）。留着后者是为了让 `toolOrder` 校验能分清两种情况——一个名字是"根本拼错了/没这个工具"，还是"这工具存在、只是本作用域故意把它藏起来了" [verified]（`index.ts:103-109`；docs/subsystems/system-prompt.md:27-38）。
 
 ## 四、实现细节关键点
 
-**每步一次组装。** agent-loop 在 `preStep` 里调用 `this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))` [verified]（`packages/core/agent-loop/src/agent.ts:230`）；随后 `renderContextSections` + `joinContextSections` 把动态上下文投影成一条 user 角色快照消息（`runtimeContext.project`，`agent.ts:232-233`），`step()` 里 `renderPrompt(assembly)` 把段落插值成 system 字符串 [verified]（`agent.ts:337`），`assembly.tools` 作为独立 wire 字段随请求发出。这正是"model-visible ⟺ logged"的落点：上下文快照是消息事件，可从日志重建。
+**每步一次组装。** 模型每走一步，都会重新组装一次。agent-loop 在 `preStep` 里调用 `this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))` [verified]（`packages/core/agent-loop/src/agent.ts:230`）；随后 `renderContextSections` + `joinContextSections` 把动态上下文投影成一条 user 角色的快照消息（`runtimeContext.project`，`agent.ts:232-233`），`step()` 里 `renderPrompt(assembly)` 把各段落插值成 system 字符串 [verified]（`agent.ts:337`），`assembly.tools` 则作为一个独立的 wire 字段随请求发出。这里正是"model-visible ⟺ logged"的落点：现场上下文被做成一条消息事件，而不是悄悄拼进 prompt，所以事后能从日志一字不差地重建。
 
-**严格变量插值。** `renderPrompt` 只认完整的 `{{name}}` 组，名字须匹配 `^[a-z][a-z0-9_]*$`；未知引用（用 `Object.hasOwn` 查，`{{constructor}}` 这类原型名算未知）、已注册但取值为 `undefined`、畸形组，一律抛错；孤立 `{{`（其后无 `}}`）当字面量透传，替换值不再二次扫描 [verified]（`index.ts:212-295`）。这是"误配 fail-loud"在提示词层的体现——宁可让这步失败，也不发出畸形提示词。
+**严格变量插值。** `renderPrompt` 只认完整成对的 `{{name}}`，名字还须匹配 `^[a-z][a-z0-9_]*$`；遇到未知引用（用 `Object.hasOwn` 查，像 `{{constructor}}` 这种原型上的名字也算未知）、已注册但取值为 `undefined`、或残缺不成对的组，一律直接抛错；只有孤立的 `{{`（后面根本没有 `}}`）才当普通字面量原样透传，而且替换进去的值不会被再扫一遍（避免值里恰好含 `{{…}}` 被二次解释）[verified]（`index.ts:212-295`）。这是"误配 fail-loud"（配错就当场大声报错）在提示词层的体现——宁可让这一步失败，也不把一段畸形提示词发给模型。
 
-**complete 段落。** 一个 `complete: true` 的段落声明"我就是完整系统提示词"：瀑布照跑（好让 tools/上下文/变量仍被解析），跑完把该段恢复为唯一段落；多于一个有效 complete 段落则组装失败 [verified]（`index.ts:505-517,536-541`）。兼容型部署（如把整段 prompt 交给外部协议）用它接管。
+**complete 段落。** 一个标了 `complete: true` 的段落等于宣告"我就是完整的系统提示词，别的段都不算"。即便如此瀑布照样跑（好让 tools/上下文/变量仍被正常解析），跑完再把这一段恢复成唯一段落；若同时出现不止一个有效的 complete 段落，则组装直接失败 [verified]（`index.ts:505-517,536-541`）。这个口子留给兼容型部署用——比如要把整段 prompt 交给某个外部协议接管时。
 
-**参数脱离拷贝。** 采集时对每个工具的 `parameters` 做 `structuredClone`（`index.ts:495-499`），瀑布监听器拿到的是副本，改动不会污染注册表里的原始 Schema——这是"发布点才提交状态"纪律在组装内部的一次应用。
+**参数脱离拷贝。** 采集时对每个工具的 `parameters` 都做一次 `structuredClone`（`index.ts:495-499`），所以瀑布监听器拿到的是副本；它爱怎么改都行，动不到注册表里那份原始 Schema。这相当于把"改稿只改复印件、原件不动"落实到组装内部，也是"发布点才提交状态"纪律的一次应用。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -133,17 +137,17 @@ sequenceDiagram
 
 ## 五、易错点与注意事项
 
-- **瀑布监听器必须 `next()`**：`system-prompt/assemble` 是 expert waterfall，不调用 `next()` 会短路整条链（`agent.ts` 依赖返回值权威性）[verified]（AGENTS.md "Waterfall listeners MUST call next()"）。
-- **`toolOrder` 误配延后暴露**：形状错误（重复项、缺 rest 标记）在 load 抛错；但"列了一个没注册的工具名"要到首次 `assemble()` 才 reject——首轮就 fail [verified]（README 已知局限；`index.ts:146-157,170-173`）。
-- **同 `order` 段落按注册顺序 tie-break**，是加载偶然产物；确定性依赖"不同 order 波段"约定，不像工具顺序被规范化 [verified]（README 已知局限）。
-- **`restrict()` 只能作用域调用**：全局限制会遮蔽所有 agent，被显式拒绝；且限制只过滤"继承面"，不过滤作用域**自有**注册——这保证 subagent 的 report/结构化输出工具不会被"允许能力"的过滤误删 [verified]（`tools/src/index.ts:1071-1096,1137-1148`）。
-- **signal 是本次请求值**，不得留存用于后续回合（否则一次取消会误伤未来 turn）[verified]（`index.ts:44-49`；docs 说明）。
+- **瀑布监听器必须 `next()`**：`system-prompt/assemble` 是 expert waterfall（一条各监听器接力传递的链），谁不调用 `next()` 就等于把整条链掐断在自己这里——后面的贡献全丢，而 `agent.ts` 又只认瀑布返回的那个最终值 [verified]（AGENTS.md "Waterfall listeners MUST call next()"）。
+- **`toolOrder` 误配会延后才暴露**：形状层面的错（有重复项、漏了 rest 标记）在 load 时就抛错；但"列了一个根本没注册的工具名"这种错，要等到第一次 `assemble()` 才被 reject——好在那就是首轮，一样会 fail、不会带病跑很久 [verified]（README 已知局限；`index.ts:146-157,170-173`）。
+- **`order` 相同的段落靠注册顺序决胜负（tie-break）**，而注册顺序是加载先后的偶然产物；所以确定性靠的是"不同段用不同 order 波段"这个约定，它不像工具顺序那样被强制规范化 [verified]（README 已知局限）。
+- **`restrict()` 只能限本作用域内的调用**：如果拿它做全局限制，会一下遮蔽掉所有 agent，因此被显式拒绝；而且它只过滤"从上层继承来的那部分工具"，不碰作用域**自己**注册的工具——这就保证了 subagent 的 report/结构化输出这类它自带的工具，不会被"允许能力"清单的过滤给误删掉 [verified]（`tools/src/index.ts:1071-1096,1137-1148`）。
+- **signal 只对本次请求有效**，用完即弃，不能留着给后续回合复用——否则本次的一个取消动作会误伤到未来的 turn [verified]（`index.ts:44-49`；docs 说明）。
 
 ## 六、工具 Schema catalog 与 Model Experience 契约
 
-这两者是把上述机制"制度化"的两道门禁。
+前面讲的都是机制本身；这两者则是把这些机制"制度化"、用自动检查兜住的两道门禁。
 
-**工具 Schema catalog（`docs/tool-catalog.md`）**：它列出每个 shipped 插件贡献给 `ctx.tools` 的 name/description/JSON-Schema。关键在生成方式——`scripts/gen-tool-catalog.ts` **启动**每个工具插件到真实 Context 上，调 `ctx.tools.schemas()` 读取模型真正会收到的 `ToolSchema[]`，而非解析源码 [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。
+**工具 Schema catalog（`docs/tool-catalog.md`）**：它是一份清单，列出每个随发行插件贡献给 `ctx.tools` 的工具的 name/description/JSON-Schema。关键不在这份清单长什么样，而在它怎么生成的——`scripts/gen-tool-catalog.ts` 会真的把每个工具插件**启动**到一个真实 Context 上，再调 `ctx.tools.schemas()` 读出模型运行时真正会收到的 `ToolSchema[]`，而不是去解析源码"看它写了什么" [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。一句话：以运行时真值为准，不以代码字面为准。
 
 > **ratify-note · 为什么"启动并采集"而非"解析 AST"生成工具 catalog**
 > - 候选解释：A boot-and-harvest（启动插件读注册表）；B 纯 TypeScript AST 遍历（像 cordis catalog 那样）。
@@ -152,11 +156,11 @@ sequenceDiagram
 > - 证据等级：[verified]（`.agents/notes/.../2026-07-02-tool-schema-catalog.md`）。
 > - 残余风险 / pre-mortem：若被证伪，最可能因 boot 清单的手写"启动配方"维护负担增长——但该 note 明确论证 provider/config 是策略、不可从布局安全推断，故保留手写。
 
-生成物由 `verify-tool-catalog`（`doc-sync` 一环）验鲜：Schema 变了而提交文件没跟上即 CI 失败；新 `tool-*` 包没进清单则完整性守卫直接报错 [verified]（tool-catalog.md:8）。这与 cordis catalog（纯 AST pass，因为事件/服务名都是可回溯静态声明的字符串字面量）形成对照——同一"验世界而非自述"的纪律，对两类文档用了两种恰当技术。
+生成出来的这份清单还会被 `verify-tool-catalog`（`doc-sync` 里的一环）持续验鲜：只要 Schema 变了而提交进仓库的文件没跟着更新，CI 就失败；有新的 `tool-*` 包没被收进清单，完整性守卫会直接报错 [verified]（tool-catalog.md:8）。这与 cordis catalog 形成对照——后者用纯 AST pass（静态扫源码）就够，因为事件名/服务名都是能从源码回溯的静态字符串字面量。同一条"验实际的世界、而不是听它自述"的纪律，针对两类文档各自挑了合适的技术。
 
-**Model Experience 契约（包 README 必写）**：2026-07-12 note 规定，每个带模型可见/邻接契约的 workspace 包 README 结尾必须有 `## Model Experience` 段（在 `## Known Limitations` 之前）[verified]（`2026-07-12-...contract.md`）。它按三种分类：结构化形式用"每上下文面一个 H3 + 三个有序 H4：What the model sees / Token effect / KV Cache effect"；零影响或纯转发用审计过的短句（`None, as …` / `Indirectly, through …`）；模型无关的通用包经 `NO_MODEL_EXPERIENCE_SECTION` 豁免。`verify-package-readme-model-experience` 在 doc-sync 校验分类、段序、字段深度与顺序、H5 承载逐字块、工具-catalog 锚链接 [verified]（cookbook adding-a-package.md:105-107）。system-prompt 包自己的 README 就示范了 System prompt 与 Tool schemas 两个 H3 [verified]（README:49-83）。
+**Model Experience 契约（每个包的 README 必写）**：2026-07-12 note 规定，凡是带"模型可见/与模型邻接"契约的 workspace 包，其 README 结尾都必须有一段 `## Model Experience`，且放在 `## Known Limitations` 之前 [verified]（`2026-07-12-...contract.md`）。这段按三种情形分类写：真正影响模型输入的，用结构化写法——"每个上下文面一个 H3 + 三个有序 H4：What the model sees（模型看到什么）/ Token effect（占多少 token）/ KV Cache effect（对缓存前缀的影响）"；对模型零影响或只是纯转发的，用审计过的固定短句（`None, as …` / `Indirectly, through …`）交代清楚；与模型完全无关的通用包，则经 `NO_MODEL_EXPERIENCE_SECTION` 显式豁免。`verify-package-readme-model-experience` 会在 doc-sync 里逐项校验：分类对不对、段落次序对不对、字段的深度与顺序对不对、逐字内容是否用 H5 承载、以及到工具 catalog 的锚链接是否有效 [verified]（cookbook adding-a-package.md:105-107）。system-prompt 包自己的 README 就作了示范，写了 System prompt 与 Tool schemas 两个 H3 [verified]（README:49-83）。
 
-其解决的问题是：插件架构下"哪些 token 进了模型请求、条件是什么、留存多久、KV-cache 前缀是否稳定"极难审计——consumer 可能把后端结果变成 tool 消息、policy 插件可能把成功替换成错误、compaction 可能删旧史、agent-scoped 注册可能只改一个 agent。逐包一段结构化契约，让审阅者从任一模型邻接包起步即可看清其贡献，而无需重建整张插件图。
+它想解决的痛点是：在插件架构下，"到底哪些 token 进了模型请求、进的条件是什么、会留存多久、KV-cache 前缀稳不稳"这些问题极难审计——consumer 可能把后端结果转成一条 tool 消息、policy 插件可能把一次成功悄悄换成错误、compaction 可能删掉旧历史、agent-scoped 注册可能只动其中一个 agent。有了逐包一段的结构化契约，审阅者从任意一个与模型邻接的包读起，就能看清它对模型输入贡献了什么，而不必先在脑子里把整张插件关系图重建一遍。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -184,7 +188,7 @@ flowchart TD
 
 ## 七、竞品/横向对比与仍存的局限
 
-社区对 dsh 工具调用的严格 JSON Schema 有正面评价（HN JonChesterfield 称超过 Codex）[claimed]（社区认知地图 E 节）。但那是表象，本章看到的机制层面区别在于：**提示词与 Schema 都被降格为可组合、可按作用域覆盖、可门禁验鲜的插件贡献**。
+社区对 dsh 工具调用采用严格 JSON Schema 有正面评价（HN 上 JonChesterfield 称其超过 Codex）[claimed]（社区认知地图 E 节）。但那更多是外在观感；从本章看到的机制层面，真正的区别在于：**提示词与 Schema 都被从"内核特权"降格为可组合、可按作用域覆盖、可用门禁验鲜的普通插件贡献**。
 
 > **ratify-note · dsh 的 waterfall 组装相较通用 harness 是否更优**
 > - 候选解释：A 单一中心模板/常量拼接（多数轻量 harness 的默认）；B dsh 的注册表 + 作用域瀑布 + 门禁。
@@ -193,11 +197,11 @@ flowchart TD
 > - 证据等级：[inferred]（机制 [verified] 于本章源码；"更优"是语境依赖判断）。
 > - 残余风险 / pre-mortem：若被证伪，最可能因绝大多数真实部署只跑单一 persona + 固定工具集，此时瀑布/作用域的表达力闲置而复杂度全额付出。
 
-**仍存的局限**（均 [verified] 于 README 已知局限）：`{{…}}` 无字面量转义语法，deferred 到真有 prompt 需要；`toolOrder` 误配延后到首轮 assemble 才报；同 order 段落 tie-break 靠注册顺序、依赖波段约定而非规范化；部署方无端用户级 prompt 编辑 API——提示词文本只能经 config/composition 或拥有该事实的插件贡献。
+**仍存的局限**（以下均 [verified] 于 README 已知局限）：`{{…}}` 没有字面量转义语法（想在提示词里原样输出两个花括号目前没有官方写法），这一项被 deferred，等真有 prompt 需要再补；`toolOrder` 误配要延后到首轮 assemble 才报；同 order 段落的 tie-break 靠注册顺序、依赖波段约定而非强制规范化；部署方也没有一个面向终端用户的 prompt 编辑 API——想改提示词文本，只能走 config/composition，或者去改拥有那段文字的那个插件。
 
 ## 小结与衔接
 
-本章把"模型每步看到什么"拆成一次 `assemble()`：四类插件贡献（section/context/tools/variable）经合并、作用域遮蔽、规范排序、协作式瀑布，产出 `PromptAssembly`，再渲染成 system 字符串、tools 字段与可溯源的 user 上下文快照三路进入请求。两道门禁——boot-and-harvest 的工具 catalog 与逐包 Model Experience 契约——把"模型看到什么"托底成可审计、防漂移的事实。
+回头看，本章把"模型每步看到什么"这件事，还原成了一次 `assemble()`：四类插件贡献（section/context/tools/variable）先合并、按作用域遮蔽、规范排序、再跑一遍协作式瀑布，产出 `PromptAssembly`，最后渲染成 system 字符串、tools 字段与可溯源的 user 上下文快照，兵分三路进入请求。而两道门禁——boot-and-harvest（启动采集）生成的工具 catalog，与逐包必写的 Model Experience 契约——则把"模型到底看到了什么"托底成可审计、防漂移的事实。
 
 上游是第 07 章的会话日志（上下文快照为何必须是事件、"model-visible ⟺ logged"从哪来），下游是第 09 章的工具注册表与执行管线（`ToolRuntime` 如何把 `assembly.tools` 背后的定义真正执行、`restrict()` 如何在执行点而非仅 Schema 层强制），以及第 11 章能力接缝三角色（工具 Schema 稳定、provider 可替换的接缝根源）。
 

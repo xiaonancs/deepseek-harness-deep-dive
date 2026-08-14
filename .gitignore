@@ -1,0 +1,7 @@
+# 被研究的上游源码克隆（体量大、非本研究产物；如需归档见 Appendix 的 zip）
+repo/
+
+# 系统/编辑器杂物
+.DS_Store
+*.log
+node_modules/

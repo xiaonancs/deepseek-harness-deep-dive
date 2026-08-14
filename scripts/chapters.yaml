@@ -1,0 +1,166 @@
+# DeepSeek Harness 深度解析 · 章节配置
+# 由 git-repo-deepresearch skill 阶段1产出。source 路径均相对 repo/deepseek-harness/。
+# 生成约束：每章七维分析 + 承重判断走 ratify-loop（产 ratify-note，标证据等级）+ ≥4 Mermaid（白底板，1:2~2:1）。
+
+meta:
+  repo: https://github.com/deepseek-ai/deepseek-harness
+  source_root: repo/deepseek-harness
+  commit_range: 2026-06-10 .. 2026-08-13
+  commits: 12293
+  packages: 219   # @deepseek-ai/dsh-* workspace 包（packages/*/*/）；49 个功能组
+  version: 0.1.0-rc.5
+
+parts:
+  - id: part1
+    title: Part I Principles and Usage
+    dir: "Part I Principles and Usage"
+  - id: part2
+    title: Part II Source Analysis
+    dir: "Part II Source Analysis"
+  - id: part3
+    title: Part III Comparative Analysis
+    dir: "Part III Comparative Analysis"
+
+chapters:
+  # ---------------- Part I ----------------
+  - id: 01
+    part: part1
+    title: 项目定位与开发者预览
+    filename: 01-定位与预览.md
+    one_liner: dsh 是什么、为何以“开发者预览”姿态开源、运行形态与总体分层。
+    key_source_paths: [README.md, README.zh.md, AGENTS.md, docs/architecture.md, LICENSE, CONTRIBUTING.md]
+
+  - id: 02
+    part: part1
+    title: 一切皆插件与 Cordis 底座
+    filename: 02-一切皆插件与Cordis.md
+    one_liner: “everything is a plugin” 如何成立；Cordis 的 Context/Service/Plugin/effect 模型与 vendoring 策略。
+    key_source_paths: [docs/architecture.md, docs/cordis-primer.md, vendor/README.md, packages/README.md, .agents/notes/implemented/process/2026-06-11-vendor-cordis-as-source.md]
+
+  - id: 03
+    part: part1
+    title: 时空可组合性范式
+    filename: 03-时空可组合性范式.md
+    one_liner: Cordis 论文的时间(可逆 effect)/空间(响应式 coeffect)可组合性，与 Koishi 血缘、Registrations-are-effects 铁律。
+    key_source_paths: [docs/cordis-primer.md, docs/cordis-tutorial/index.md, AGENTS.md, .agents/notes/implemented/architecture/2026-06-11-microkernel-event-taxonomy.md]
+
+  - id: 04
+    part: part1
+    title: Profile 与 Bundle 组装
+    filename: 04-Profile与Bundle组装.md
+    one_liner: 运行时是 boot 时组装的插件树；profile/bundle/patch 分层覆盖机制。
+    key_source_paths: [docs/architecture.md, packages/boot/app-boot/README.md, packages/bundle/base/README.md, packages/bundle/web-app/README.md, packages/bundle/headless/README.md, packages/preset/README.md]
+
+  # ---------------- Part II ----------------
+  - id: 05
+    part: part2
+    title: 微内核与事件分类法
+    filename: 05-微内核与事件分类法.md
+    one_liner: waterfall/serial/parallel/emit 四种 dispatch 模式；唯一具体 loop 可替换。
+    key_source_paths: [.agents/notes/implemented/architecture/2026-06-11-microkernel-event-taxonomy.md, docs/architecture.md, docs/event-producer-consumer.md, docs/cordis-primer.md, packages/core]
+
+  - id: 06
+    part: part2
+    title: Agent Loop 与回合流
+    filename: 06-AgentLoop与回合流.md
+    one_liner: turn/step 生命周期、inbox 认领、pre-step 改写、防御式容错与取消恢复。
+    key_source_paths: [docs/agent-lifecycle.md, docs/subsystems/core.md, docs/architecture.md, packages/core/agent-loop, packages/core/agent]
+
+  - id: 07
+    part: part2
+    title: 事件溯源会话日志
+    filename: 07-事件溯源会话日志.md
+    one_liner: append-only SessionEvent、model-visible⟺logged 不变量、deriveMessages 投影、fork/resume。
+    key_source_paths: [docs/subsystems/session.md, .agents/notes/implemented/architecture/2026-06-11-event-sourced-sessions.md, .agents/notes/implemented/architecture/2026-08-10-session-log-version-mechanism.md, packages/core/session, packages/session]
+
+  - id: 08
+    part: part2
+    title: 系统提示词与工具 Schema 组装
+    filename: 08-系统提示词与Schema组装.md
+    one_liner: prompt-section 与 tool-schema 的 waterfall 组装；model experience 契约。
+    key_source_paths: [docs/subsystems/system-prompt.md, docs/tool-catalog.md, .agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md, packages/core/system-prompt]
+
+  - id: 09
+    part: part2
+    title: 工具注册表与执行管线
+    filename: 09-工具注册表与执行管线.md
+    one_liner: 作用域化工具注册；tools/pre-execute→execute→post-execute waterfall；guard 超时/循环卫生；UI render intent。
+    key_source_paths: [docs/subsystems/tools.md, docs/tool-execution-pipeline.md, docs/cookbook/adding-a-tool.md, packages/core/tools, packages/guard]
+
+  - id: 10
+    part: part2
+    title: LLM 适配器与流式词汇
+    filename: 10-LLM适配器与流式词汇.md
+    one_liner: StreamChunk 协议、内容块词汇、双真实适配器验证抽象中立性。
+    key_source_paths: [docs/subsystems/llm-streaming.md, .agents/notes/implemented/architecture/2026-06-13-twin-llm-adapters.md, .agents/notes/implemented/architecture/2026-06-11-content-block-vocabulary.md, packages/llm, docs/cookbook/adding-an-llm-adapter.md]
+
+  - id: 11
+    part: part2
+    title: 能力接缝架构
+    filename: 11-能力接缝架构.md
+    one_liner: Service Definition/Provider/Consumer 三角色；一次 provider 替换如何改变整个产品。
+    key_source_paths: [.agents/notes/implemented/architecture/2026-06-13-capability-seams.md, docs/capability-seams.md, docs/glossary.md, docs/architecture.md]
+
+  - id: 12
+    part: part2
+    title: 执行世界 Shell/Subprocess/Terminal
+    filename: 12-执行世界.md
+    one_liner: subprocess→shell→terminal 三层；request/spec 显式 resolve；PTY 持久会话。
+    key_source_paths: [docs/subsystems/shell.md, docs/subsystems/subprocess.md, docs/subsystems/terminal.md, packages/shell, packages/subprocess, packages/terminal]
+
+  - id: 13
+    part: part2
+    title: 沙箱与进程约束
+    filename: 13-沙箱与进程约束.md
+    one_liner: sandbox 接缝、bwrap/Landlock/Seatbelt 后端、“steering not containment” 立场、landlock postmortem。
+    key_source_paths: [docs/subsystems/sandbox.md, native/README.md, docs/postmortem/0004-landlock-partial-notice-misclassified-child-failures.md, packages/sandbox]
+
+  - id: 14
+    part: part2
+    title: 文件系统、LSP 与代码运行时
+    filename: 14-文件系统-LSP-代码运行时.md
+    one_liner: fs 接缝与策略、LSP stdio provider、code-runtime worker 的 Code Mode。
+    key_source_paths: [docs/subsystems/filesystem.md, docs/subsystems/lsp.md, docs/subsystems/code-runtime.md, packages/fs, packages/lsp, packages/code-runtime]
+
+  - id: 15
+    part: part2
+    title: 编排与委派 Subagent/Workflow/Plan
+    filename: 15-编排与委派.md
+    one_liner: subagent 委派、workflow worker 引擎、plan 模式作为可记录状态、jobs 后台、todo。
+    key_source_paths: [docs/subsystems/subagent.md, docs/subsystems/workflow.md, docs/subsystems/plan.md, docs/subsystems/jobs.md, packages/subagent, packages/workflow, packages/plan]
+
+  - id: 16
+    part: part2
+    title: 上下文治理 压缩/注入/Skill
+    filename: 16-上下文治理.md
+    one_liner: compaction 接缝、context 请求上下文注入、skill 目录/加载、spill 溢出策略。
+    key_source_paths: [docs/subsystems/compaction.md, docs/subsystems/skills.md, docs/subsystems/spill.md, packages/compaction, packages/context, packages/skill, packages/spill]
+
+  - id: 17
+    part: part2
+    title: 会话持久化、检索与远程接入
+    filename: 17-持久化检索与远程接入.md
+    one_liner: 持久化/投影 seam、session-query 全文检索与血缘、SDK JSON-RPC、ACP、api 网关、web host/client。
+    key_source_paths: [docs/subsystems/persistence.md, docs/subsystems/session-query.md, docs/subsystems/web-server.md, packages/sdk, packages/acp, packages/api, packages/host, packages/client, packages/typert]
+
+  - id: 18
+    part: part2
+    title: 互操作与自我修改
+    filename: 18-互操作与自我修改.md
+    one_liner: MCP client、Claude Code/Codex hooks 桥、extensions 让 agent 挂载/卸载自己的插件。
+    key_source_paths: [docs/subsystems/extensions.md, .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md, packages/mcp, packages/hooks, packages/extensions]
+
+  # ---------------- Part III ----------------
+  - id: 19
+    part: part3
+    title: 竞品对比与生态定位
+    filename: 19-竞品对比与生态定位.md
+    one_liner: 与 Claude Code / Codex CLI / Pi 的对比；插件生态与“官方仓库非特权”理念。
+    key_source_paths: [README.md, CONTRIBUTING.md, docs/architecture.md, packages/README.md]
+
+  - id: 20
+    part: part3
+    title: AI 自举开发与理念映射
+    filename: 20-AI自举开发与理念映射.md
+    one_liner: 12293 commits 的 AI 并行开发轨迹、Agent Notes/postmortem/门禁纪律，如何映射 DeepSeek 公司理念。
+    key_source_paths: [AGENTS.md, .agents/notes/README.md, docs/postmortem/README.md, docs/development.md, .agents/skills]

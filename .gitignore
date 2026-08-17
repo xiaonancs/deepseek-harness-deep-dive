@@ -5,3 +5,8 @@ repo/
 .DS_Store
 *.log
 node_modules/
+
+# 研究过程/构建产物（本地保留，不作为交付物提交）
+review/
+scripts/
+assets/gen_cover.py

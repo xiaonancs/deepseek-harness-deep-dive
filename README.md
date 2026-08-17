@@ -1,5 +1,7 @@
 # DeepSeek Harness 源码深度解析
 
+![DeepSeek Harness Source Analysis](assets/cover.png)
+
 ## 快速导航
 
 - 📌 [总纲 · 技术主线分析](总纲-DeepSeek-Harness技术主线分析.md) —— 一句话主线、阅读路径、核心机制速览

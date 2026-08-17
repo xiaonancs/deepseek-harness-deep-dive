@@ -18,7 +18,7 @@ dsh 的架构自白只有一句话，写在根 `AGENTS.md` 开头和 `docs/archi
 2. **生命周期与副作用回滚**：agent 运行时要动态挂载/卸载能力（子 agent、临时工具、热重载的插件）。一个插件在运行期注册了监听器、定时器、服务、文件监视，卸载时若不能干净地全部撤销，就会泄漏、串扰、状态残留。打个比方：一个访客进屋开了灯、开了空调、还接了根网线，走的时候如果这些没人负责一一关掉，屋子就会越用越乱。
 3. **依赖顺序**：插件 A 需要 `ctx.tools` 就绪才能注册工具。手工编排 boot 顺序（谁先启动、谁后启动）既脆弱又不可组合——加一个新插件就得重新想一遍它该排在哪。
 
-Cordis 对这三点分别给出了"上下文即服务仓库""注册即可回滚 effect""按服务依赖声明 inject"的答案。这也是《社区认知地图》里被反复标记为"本项目最有研究味的部分"的那套时空可组合性范式（详细形式化留到第 03 章）`[claimed]`（`全网调研-社区认知地图.md` B 节）。
+Cordis 对这三点分别给出了"上下文即服务仓库""注册即可回滚 effect""按服务依赖声明 inject"的答案。这也是《社区认知地图》里被反复标记为"本项目最有研究味的部分"的那套Spatiotemporal Composability范式（详细形式化留到第 03 章）`[claimed]`（`全网调研-社区认知地图.md` B 节）。
 
 ## 三、解决思路与方案
 
@@ -103,7 +103,7 @@ sequenceDiagram
 
 </div>
 
-> **↔ 论文对应**：这里的 "Registrations are effects" 与 disposer 反序卸载，在《时空可组合性》论文里被形式化为**可逆 effect**——每次 context 变换都携带显式逆元，由 effect context $\partial\Gamma=(\gamma,\varphi)$ 里的 accumulator $\varphi$ 追踪（track），卸载即一次 recover（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §3.1，Def.2/3/6）。disposer 的"逆序（LIFO）运行"正对应论文 Thm.16：组件内一串 effect 按 LIFO 反转、无需任何前提即精确恢复 `[verified]`。
+> **↔ 论文对应**：这里的 "Registrations are effects" 与 disposer 反序卸载，在《Spatiotemporal Composability》论文里被形式化为**可逆 effect**——每次 context 变换都携带显式逆元，由 effect context $\partial\Gamma=(\gamma,\varphi)$ 里的 accumulator $\varphi$ 追踪（track），卸载即一次 recover（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §3.1，Def.2/3/6）。disposer 的"逆序（LIFO）运行"正对应论文 Thm.16：组件内一串 effect 按 LIFO 反转、无需任何前提即精确恢复 `[verified]`。
 
 ### Service 子类与 Context 树
 
@@ -189,14 +189,14 @@ flowchart LR
 
 一句话记：**Cordis 回答"插件怎么装卸组合"，dsh 回答"agent 怎么跑"**；前者是通用底盘，后者是跑在底盘上的具体产品。
 
-**论文—框架—产品三角。** 把视野再拉远一层，这套东西其实站在三块基石上，且三块基石彼此指认：支撑"时空可组合性"范式的那篇论文（北大 × DeepSeek 合作，Tianyi Cui 为共同作者）给出理论 `[claimed]`；Cordis 是这套范式的一个通用**实现**；dsh 则是把 Cordis 用于 agent 场景的一个具体**应用**。一个耐人寻味的旁证是：Cordis 的官方文档甚至托管在 `deepseek-harness.github.io` 域名下 `[claimed]`（`全网调研-社区认知地图.md` B 节）——这条线索让"论文作者、框架作者、产品团队三者高度重叠"看起来很可能成立，但确切的人员与组织血缘仍难从公开信息坐实，故整体记为 `[inferred]`。
+**论文—框架—产品三角。** 把视野再拉远一层，这套东西其实站在三块基石上，且三块基石彼此指认：支撑"Spatiotemporal Composability"范式的那篇论文（北大 × DeepSeek 合作，Tianyi Cui 为共同作者）给出理论 `[claimed]`；Cordis 是这套范式的一个通用**实现**；dsh 则是把 Cordis 用于 agent 场景的一个具体**应用**。一个耐人寻味的旁证是：Cordis 的官方文档甚至托管在 `deepseek-harness.github.io` 域名下 `[claimed]`（`全网调研-社区认知地图.md` B 节）——这条线索让"论文作者、框架作者、产品团队三者高度重叠"看起来很可能成立，但确切的人员与组织血缘仍难从公开信息坐实，故整体记为 `[inferred]`。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TD
-  Paper["论文: 时空可组合性范式<br/>(北大 × DeepSeek, Tianyi Cui 共同作者) [claimed]"]
+  Paper["论文: Spatiotemporal Composability范式<br/>(北大 × DeepSeek, Tianyi Cui 共同作者) [claimed]"]
   Koishi["Koishi: 聊天机器人框架生态"]
   Cordis["Cordis: 通用 TS 微内核插件框架<br/>(@shigma 主导, ~537/550 commits) [claimed]"]
   DSH["DeepSeek Harness (dsh): agent 产品"]
@@ -212,7 +212,7 @@ flowchart TD
 
 </div>
 
-关于三者关系与血缘的更细追溯，可循以下交叉引用：横向的框架对比见 [Part III 第 21 章《参考底座 Cordis 深度对比》](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)；对 Cordis 本身的系统调研（尤其 Koishi / Cordis / dsh 三者关系）见 [Part V《Cordis 深度调研》第 29 章](../Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md)；支撑范式的论文全解见 [Part IV《时空可组合性论文全解》](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md)。
+关于三者关系与血缘的更细追溯，可循以下交叉引用：横向的框架对比见 [Part III 第 21 章《参考底座 Cordis 深度对比》](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)；对 Cordis 本身的系统调研（尤其 Koishi / Cordis / dsh 三者关系）见 [Part V《Cordis 深度调研》第 29 章](../Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md)；支撑范式的论文全解见 [Part IV《Spatiotemporal Composability论文全解》](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)。
 
 ## 六、竞品/横向对比
 
@@ -236,7 +236,7 @@ flowchart TD
 
 本章确立了 dsh 的地基：**Cordis 提供"上下文即服务仓库 + 注册即可回滚 effect + 按 inject 声明依赖"三件套，使"一切皆插件、无特权内核"从口号变成可运行的机械事实**；dsh 又以 vendored + pin + rescope 的方式完全拥有这一层，用 hygiene 门禁把"只此一份"锁死。理解了 `ctx` 树、effect/disposer 契约、四种派发模式，就握住了后续所有章节的公共语汇。
 
-下一章（第 03 章）深入 Cordis 背后的"时空可组合性"范式与那篇形式化论文——为何 effect 是"时间可组合"（卸载能完全回滚副作用）、coeffect 是"空间可组合"（响应式声明依赖），把本章的机械事实提升到范式层面。第 04 章则接着讲这棵插件树在启动时如何由 profile / bundle / `cordis.patch.yml` 有序组装出来。
+下一章（第 03 章）深入 Cordis 背后的"Spatiotemporal Composability"范式与那篇形式化论文——为何 effect 是"时间可组合"（卸载能完全回滚副作用）、coeffect 是"空间可组合"（响应式声明依赖），把本章的机械事实提升到范式层面。第 04 章则接着讲这棵插件树在启动时如何由 profile / bundle / `cordis.patch.yml` 有序组装出来。
 
 ## 源码索引
 

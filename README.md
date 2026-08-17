@@ -7,7 +7,7 @@
 - 📚 [Part I 理念与使用](#part-i-理念与使用)
 - 🔧 [Part II 源码剖析](#part-ii-源码剖析)
 - 🧭 [Part III 对比与元](#part-iii-对比与元)（含 Ch21 参考底座 Cordis 深度对比）
-- 📕 [Part IV 论文研究](#part-iv-论文研究)（时空可组合性论文全解 + 论文↔dsh 映射）
+- 📕 [Part IV 论文研究](#part-iv-论文研究)（Spatiotemporal Composability论文全解 + 论文↔dsh 映射）
 - 🧬 [Part V Cordis 深度调研](#part-v-cordis-深度调研)（对 cordiverse/cordis 单独跑一遍深度解析 + 三者关系）
 - 📘 [官方文档对照](Appendix/官方文档对照.md) · 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md)
 - 📎 [Appendix 附录](Appendix/)
@@ -31,7 +31,7 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 |---|---|---|
 | 01 | [项目定位与开发者预览](Part%20I%20Principles%20and%20Usage/01-定位与预览.md) | dsh 是什么、为何以预览姿态开源、运行形态与分层 |
 | 02 | [一切皆插件与 Cordis 底座](Part%20I%20Principles%20and%20Usage/02-一切皆插件与Cordis.md) | Context/Service/Plugin/effect 模型与 vendoring |
-| 03 | [时空可组合性范式](Part%20I%20Principles%20and%20Usage/03-时空可组合性范式.md) | 可逆 effect / 响应式 coeffect、Koishi 血缘 |
+| 03 | [Spatiotemporal Composability范式](Part%20I%20Principles%20and%20Usage/03-Spatiotemporal-Composability.md) | 可逆 effect / 响应式 coeffect、Koishi 血缘 |
 | 04 | [Profile 与 Bundle 组装](Part%20I%20Principles%20and%20Usage/04-Profile与Bundle组装.md) | boot 时分层覆盖组装插件树 |
 
 ### Part II 源码剖析
@@ -67,7 +67,7 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 
 | 章 | 标题 | 提要 |
 |---|---|---|
-| 22 | [时空可组合性论文全解](Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) | 88 页正式版逐节精读：全章节覆盖 + 2 图 2 表 + 10 算法 + 18 定理 + 抽象总结（用 paper-research 工作流产出、`verify-report` 通过） |
+| 22 | [Spatiotemporal Composability论文全解](Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) | 88 页正式版逐节精读：全章节覆盖 + 2 图 2 表 + 10 算法 + 18 定理 + 抽象总结（用 paper-research 工作流产出、`verify-report` 通过） |
 | 23 | [论文与 dsh 映射](Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md) | 论文范式 ↔ dsh 源码逐条映射（可逆 effect/reactive coeffect/生命周期/统一 context） |
 
 ### Part V Cordis 深度调研

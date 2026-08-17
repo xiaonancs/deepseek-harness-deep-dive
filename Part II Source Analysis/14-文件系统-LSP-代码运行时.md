@@ -57,7 +57,7 @@ flowchart LR
 <p>图注：三条能力域各自是一套 Def/Provider/Consumer 三角色；fs 的策略是第四方，只经事件参与，不进接缝签名。它们经 provider 的 processPath/fileUrl 收敛到同一个"执行世界"。</p>
 </div>
 
-> **↔ 论文对应**：把 fs 读写策略做成挂在旁边的"事件闸"、不进服务签名，在《时空可组合性》论文里对应 **interception**（$\Sigma^{inter}$）——给依赖访问附加**横切元数据**、不改依赖值本身，从而让外层 context 在不改组件代码的前提下约束"该组件怎么用这个 coeffect"（论文正举"给文件系统依赖带哪些路径可读写的元数据"为例，见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §3.2.3，Def.30/31）。差异在于：dsh 用独立的 `fs/*` 事件闸 + 可选 guard 承载这层横切治理，而非论文的元数据幺半群 $\oplus_k$ 合并 `[inferred]`。
+> **↔ 论文对应**：把 fs 读写策略做成挂在旁边的"事件闸"、不进服务签名，在《Spatiotemporal Composability》论文里对应 **interception**（$\Sigma^{inter}$）——给依赖访问附加**横切元数据**、不改依赖值本身，从而让外层 context 在不改组件代码的前提下约束"该组件怎么用这个 coeffect"（论文正举"给文件系统依赖带哪些路径可读写的元数据"为例，见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §3.2.3，Def.30/31）。差异在于：dsh 用独立的 `fs/*` 事件闸 + 可选 guard 承载这层横切治理，而非论文的元数据幺半群 $\oplus_k$ 合并 `[inferred]`。
 
 ### 3.2 LSP：通用 stdio 宿主 + 每工作区一进程池
 

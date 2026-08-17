@@ -6,7 +6,7 @@
 
 ## 一、Cordis 是什么
 
-Cordis 的自我定义写在 README 第一行：**"A Meta-Framework of Spatiotemporal Composability"**（一个时空可组合性的元框架）`[verified]`（`repo/cordis/README.md:5`）。而 `packages/core` 的包描述用了更朴素的说法——"Meta-Framework for Modern Applications"`[verified]`（`repo/cordis/packages/core/package.json:3`）。
+Cordis 的自我定义写在 README 第一行：**"A Meta-Framework of Spatiotemporal Composability"**（一个Spatiotemporal Composability的元框架）`[verified]`（`repo/cordis/README.md:5`）。而 `packages/core` 的包描述用了更朴素的说法——"Meta-Framework for Modern Applications"`[verified]`（`repo/cordis/packages/core/package.json:3`）。
 
 "元框架（meta-framework）"这个词值得拆开讲：它自己不直接实现业务功能，而是提供一套"如何把功能拼装起来"的规则。打个比方，它不是灯泡，而是**插座标准**——规定了灯泡怎么插、怎么拔、拔了以后电路怎么恢复，至于插进来的是台灯还是电扇，它不关心。这套"插拔标准"在 Cordis 里由几个核心概念承担，读源码会反复撞见它们：
 
@@ -16,7 +16,7 @@ Cordis 的自我定义写在 README 第一行：**"A Meta-Framework of Spatiotem
 - **effect / disposer**：插件运行时产生的"副作用"（注册监听、占用资源）都通过 `ctx.effect(...)` 登记，返回一个可回收的 disposer；卸载时统一回滚。`Context.effect` 是一个 `unique symbol`（`context.ts:22`，`[verified]`），fiber 里 `effect` 的实现集中在 `fiber.ts:225-242` 一带（`[verified]`）。
 - **loader / HMR**：把"从配置文件加载插件""热替换（Hot Module Replacement，改代码不重启）"这类能力，做成了独立的插件包 `@cordisjs/plugin-loader`、`@cordisjs/plugin-hmr`（`[verified]`，见下文包清单）。
 
-这些名词现在只需混个脸熟。要记住的一句话是：**Cordis 用一套"可组合、可回收"的插件模型，把一个应用拆成许多能独立装卸的单元**，而"时空可组合性"里的"时"，指的正是插件在时间维度上的动态装卸（对应 fiber 的生命周期），"空"则是 Context 在作用域维度上的隔离与派生。
+这些名词现在只需混个脸熟。要记住的一句话是：**Cordis 用一套"可组合、可回收"的插件模型，把一个应用拆成许多能独立装卸的单元**，而"Spatiotemporal Composability"里的"时"，指的正是插件在时间维度上的动态装卸（对应 fiber 的生命周期），"空"则是 Context 在作用域维度上的隔离与派生。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 

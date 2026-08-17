@@ -119,7 +119,7 @@ stateDiagram-v2
 > - 证据等级：`[verified]`（`agent.ts:332-401`、`architecture.md:65`）。
 > - 残余风险：若将来单请求内出现"部分工具跨请求流式续传"，step 的原子性假设会被冲击，需要更细的子边界。
 
-> **↔ 论文对应**：turn 内 step 的"多步可中断 + step 边界"，在《时空可组合性》论文里被形式化为 **effect iterator**（reified delimited continuation）——一次激活顺序执行多步 effect、每步 yield 逆元并 LIFO 累积，续延 $\mathsf{Maybe}(\mathfrak E^{iter})$ 在两次迭代之间提供一个天然中断边界（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §4.3.2，Def.51/52；带转移态的生命周期见 Figure 2）。dsh 的 step 边界与之同构：都是"可迭代、可在边界处改道/中止"的转移过程，而非一步到位的原子激活 `[inferred]`。
+> **↔ 论文对应**：turn 内 step 的"多步可中断 + step 边界"，在《Spatiotemporal Composability》论文里被形式化为 **effect iterator**（reified delimited continuation）——一次激活顺序执行多步 effect、每步 yield 逆元并 LIFO 累积，续延 $\mathsf{Maybe}(\mathfrak E^{iter})$ 在两次迭代之间提供一个天然中断边界（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §4.3.2，Def.51/52；带转移态的生命周期见 Figure 2）。dsh 的 step 边界与之同构：都是"可迭代、可在边界处改道/中止"的转移过程，而非一步到位的原子激活 `[inferred]`。
 
 ## 三、Inbox：单一入口与"谁能唤醒"
 

@@ -9,7 +9,7 @@
 先把最容易被说岔的部分定死。三者是一条**单向的抽象—采用链**,不是平行的三个项目:
 
 - **Koishi** 是起点——一个成熟的跨平台聊天机器人框架,带插件市场、HMR(热模块替换,即改代码不重启就生效)`[verified]`(全网调研已核实 koishi 官方 README)。它早年把「插件、服务、上下文」这套依赖注入机制打磨成熟。
-- **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来,成为一个领域中立的微内核框架,自述「A Meta-Framework of Spatiotemporal Composability」(时空可组合性元框架)`[verified]`(`repo/cordis/README.md:5`)。所谓元框架,就是「用来搭框架的框架」:它自己不做具体业务,只提供组织插件、注入依赖、干净卸载的底座。
+- **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来,成为一个领域中立的微内核框架,自述「A Meta-Framework of Spatiotemporal Composability」(Spatiotemporal Composability元框架)`[verified]`(`repo/cordis/README.md:5`)。所谓元框架,就是「用来搭框架的框架」:它自己不做具体业务,只提供组织插件、注入依赖、干净卸载的底座。
 - **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm 依赖装,而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`,再在其上特化出一个跑编码 agent 的外壳 `[verified]`(`vendor/README.md` 清单表)。
 
 「Cordis 抽象自 Koishi」这一步,两家 README 并未逐字互相点名,只能记为 `[inferred]`;但有一条**一手实锤**把它顶得很稳:论文 §4.3 直接写「**Koishi 的 plugin 就是本文说的 component**」,且说明 Koishi 建立在 Cordis 之上(Koishi 用 v3,论文形式化对应 v4)`[verified]`(第 23 章摘录 `:185`)。也就是说,「Koishi—Cordis 同源、Cordis 是更底层的那一层」这件事,连论文自己都承认了。
@@ -20,7 +20,7 @@
 %%{init: {'theme':'neutral'}}%%
 flowchart LR
   K["Koishi<br/>聊天机器人框架<br/>插件市场 · HMR · DI"]
-  C["Cordis<br/>通用微内核 元框架<br/>时空可组合性"]
+  C["Cordis<br/>通用微内核 元框架<br/>Spatiotemporal Composability"]
   D["DeepSeek Harness<br/>编码 agent 外壳<br/>一切皆插件"]
   K -. "剥离通用内核 [inferred]<br/>论文 §4.3 侧证" .-> C
   C == "整份 vendored + rescope [verified]" ==> D
@@ -132,7 +132,7 @@ flowchart TB
 最后一条线,是那篇论文如何把三者钉成一个闭环三角。三个顶点各司其职:
 
 - **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性(可逆 effect,任何加载都能干净卸载)」与「空间可组合性(响应式 coeffect,依赖变化自动协调)」形式化,由北大×DeepSeek-AI 三人合著 `[verified]`(第 23 章 `:13`)。它形式化的对象正是 Cordis 的插件范式,§4.3 明说「Koishi 的 plugin 即本文的 component」,并把 Koishi/Cordis 作为存在性验证案例(§4.3、§5)`[verified]`(第 23 章 `:185`)。
-- **Cordis 是范式的实现**——一个真跑起来的时空可组合性内核,自述就叫「A Meta-Framework of Spatiotemporal Composability」,与论文标题同一措辞 `[verified]`(`repo/cordis/README.md:5`)。
+- **Cordis 是范式的实现**——一个真跑起来的Spatiotemporal Composability内核,自述就叫「A Meta-Framework of Spatiotemporal Composability」,与论文标题同一措辞 `[verified]`(`repo/cordis/README.md:5`)。
 - **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向(让 AI agent 在少人监督下连续生成/替换自身组件),而 dsh 恰是这样一个 harness,其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`(第 23 章 `:239`;dsh `packages/self-modification`)。
 
 三个顶点还共享同一套**文档与仓储基础设施**,这是最硬的一手佐证:Cordis 自己的 README 把 **Paper 指向 `github.com/cordiverse/paper`**(与 Cordis 同属 cordiverse 组织)、把 **Documentation 指向 `deepseek-harness.github.io`** `[verified]`(`repo/cordis/README.md:9-10`、`repo/cordis/packages/core/README.md:9-10`)。也就是说,Cordis 的文档就托管在 DeepSeek Harness 的站点上——底座与产品共用一个 github.io,这本身就是三者一体的证据。
@@ -142,7 +142,7 @@ flowchart TB
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TB
-  PAPER["论文<br/>时空可组合性范式<br/>形式化 what"]
+  PAPER["论文<br/>Spatiotemporal Composability范式<br/>形式化 what"]
   CORDIS["Cordis<br/>范式的实现<br/>how"]
   DSH["dsh<br/>范式的应用<br/>self-evolving harness"]
   PAPER -- "形式化其插件模型<br/>§4.3 Koishi plugin = component" --> CORDIS

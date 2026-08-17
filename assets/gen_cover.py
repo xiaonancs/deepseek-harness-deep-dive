@@ -104,12 +104,13 @@ for cx,cy,lbl,core in mods:
     out.append(f'<text x="{px:.1f}" y="{py+1:.1f}" text-anchor="middle" font-size="{fs}" font-weight="700" fill="{tc}">{lbl}</text>')
 out.append('</g>')
 
-# ---- 时空两维轴（板上方两条金箭头 + 标签）----
-tl=iso(-0.6,-0.6,0); tr=iso(4.6,-0.6,0); ll=iso(-0.6,4.6,0)
-out.append(f'<line x1="{tl[0]:.0f}" y1="{tl[1]-10:.0f}" x2="{tr[0]:.0f}" y2="{tr[1]-10:.0f}" stroke="{GOLD}" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>')
-out.append(f'<text x="{(tl[0]+tr[0])/2:.0f}" y="{tr[1]-16:.0f}" text-anchor="middle" font-size="13" font-weight="700" fill="{DKGOLD}">时间维 · 可逆 effect（φ⁻¹ 回滚）</text>')
-out.append(f'<line x1="{tl[0]-10:.0f}" y1="{tl[1]:.0f}" x2="{ll[0]-10:.0f}" y2="{ll[1]:.0f}" stroke="{GOLD}" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>')
-out.append(f'<text x="{tl[0]-16:.0f}" y="{(tl[1]+ll[1])/2:.0f}" text-anchor="middle" font-size="13" font-weight="700" fill="{DKGOLD}" transform="rotate(-90 {tl[0]-16:.0f} {(tl[1]+ll[1])/2:.0f})">空间维 · 响应式 coeffect（notify）</text>')
+# ---- 时空两维轴（移到板外上方留白，短箭头指向对应棱边，文字与模块完全分离）----
+# 空间维：左上留白，箭头指向板的左上棱
+out.append(f'<text x="812" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="{DKGOLD}">空间维 · 响应式 coeffect（notify）</text>')
+out.append(f'<line x1="812" y1="68" x2="742" y2="116" stroke="{GOLD}" stroke-width="1.5" marker-end="url(#ah)" opacity="0.9"/>')
+# 时间维：右上留白，箭头指向板的右上棱
+out.append(f'<text x="1120" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="{DKGOLD}">时间维 · 可逆 effect（φ⁻¹ 回滚）</text>')
+out.append(f'<line x1="1120" y1="68" x2="1190" y2="116" stroke="{GOLD}" stroke-width="1.5" marker-end="url(#ah)" opacity="0.9"/>')
 
 # ---- 生命周期环（右上角小母题，论文 Fig1/2）----
 lx,ly,r=1300,86,40
@@ -138,7 +139,7 @@ out.append(f'''
     <text x="66" y="298" font-size="62" font-weight="800" fill="{INK}">Source Analysis</text>
     <text x="70" y="346" font-size="22" fill="#5b6472">源码深度解析 · Deep Dive into Agent-Harness Engineering</text>
     <rect x="70" y="366" width="470" height="2.5" fill="url(#wireH)"/>
-    <text x="70" y="396" font-size="16" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · 时空可组合性 · 可逆 effect ⊕ 响应式 coeffect</text>
+    <text x="70" y="396" font-size="16" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · Spatiotemporal Composability · effect ⊕ coeffect</text>
     <text x="70" y="420" font-size="13" fill="#9a8a5a" font-family="ui-monospace,Menlo,monospace">Cordis 底座 · ∂Γ / Γ∞ · Preservation·Progress·Confluence</text>
   </g>''')
 out.append(f'<text x="{W-26}" y="{H-20}" text-anchor="end" font-size="16" fill="#8a94a6" font-family="ui-monospace,Menlo,monospace">xiaonan.cs@gmail.com</text>')

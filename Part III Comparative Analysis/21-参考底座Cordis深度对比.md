@@ -73,7 +73,7 @@ stateDiagram-v2
 
 **Loader 把 YAML 变成插件树,HMR 让它热更。** Loader 读一份 `cordis.yml`,声明式地把每一行(entry)挂成一个插件;HMR 监听源码与配置文件变化,改动时只重载受影响的子树,不重启进程。这两件事本身也是插件(`@cordisjs/plugin-loader`、`@cordisjs/plugin-hmr`),同样 vendored 在仓库里。
 
-> **↔ 论文对应**：本节的 `fiber`、`ctx.effect`、epoch 依赖追踪，在《时空可组合性》论文的实现章（§5）里逐字段对应理论构造——**Table 2**（理论↔实现对应）给出映射：一等 context $\Gamma_\infty$→`ctx`、$\mathrm{effect}_\Gamma$→`ctx.effect`、coeffect context $\Sigma/\Sigma^{iso}/\Sigma^{inter}$→`ctx[@@store]`/`[@@isolate]`/`[@@intercept]`（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §5，Table 2；逐条 dsh 映射另见 [Part IV 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)）。epoch 则是论文 §4 依赖满足性谓词 $\gamma\vDash d_n$ 的工程落地 `[verified]`。
+> **↔ 论文对应**：本节的 `fiber`、`ctx.effect`、epoch 依赖追踪，在《Spatiotemporal Composability》论文的实现章（§5）里逐字段对应理论构造——**Table 2**（理论↔实现对应）给出映射：一等 context $\Gamma_\infty$→`ctx`、$\mathrm{effect}_\Gamma$→`ctx.effect`、coeffect context $\Sigma/\Sigma^{iso}/\Sigma^{inter}$→`ctx[@@store]`/`[@@isolate]`/`[@@intercept]`（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §5，Table 2；逐条 dsh 映射另见 [Part IV 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)）。epoch 则是论文 §4 依赖满足性谓词 $\gamma\vDash d_n$ 的工程落地 `[verified]`。
 
 ## 三、`dsh` 如何采用 Cordis
 
@@ -121,7 +121,7 @@ flowchart LR
 
 | 维度 | Cordis(通用微内核底座) | DeepSeek Harness(agent harness 产品) |
 |---|---|---|
-| 定位 | 与领域无关的插件框架,"时空可组合性"元框架 `[verified]`(官方 README) | 专为编码/工具型 agent 打造的运行外壳,"一切皆插件"落到 agent 域 `[verified]`(`CLAUDE.md`) |
+| 定位 | 与领域无关的插件框架,"Spatiotemporal Composability"元框架 `[verified]`(官方 README) | 专为编码/工具型 agent 打造的运行外壳,"一切皆插件"落到 agent 域 `[verified]`(`CLAUDE.md`) |
 | 内核抽象 | `Context`/`Service`/`Plugin`/`fiber`/`effect` 五件套 `[verified]`(`cordis-primer.md:9-13`) | 完全沿用,不改内核抽象,只在其上定义**能力接缝**(Service Definition/Provider/Consumer 三角)`[verified]`(`CLAUDE.md`) |
 | 扩展点 | 任意服务 + 四种事件派发模式,领域中立 `[verified]`(`cordis-primer.md:19-24`) | 收窄为 agent 专用服务:`ctx.tools`/`ctx.llm`/`ctx.sessions`/`ctx.agents` 等 `[verified]`(`cordis-primer.md:10,42`) |
 | 生命周期/回滚 | fiber 六态机 + effect/disposer 成组回收 `[verified]`(`fiber.ts:147-153,675-676`) | 硬化重入卸载缝隙,并把 Loader/Include 配置改动做成**事务化对账**(失败整体回滚)`[verified]`(`vendor/README.md:38,40`) |

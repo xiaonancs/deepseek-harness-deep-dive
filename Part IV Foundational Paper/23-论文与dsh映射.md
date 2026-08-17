@@ -1,4 +1,4 @@
-# 论文导读：时空可组合性范式
+# 论文导读：Spatiotemporal Composability范式
 
 > 读完能回答：一篇北大 × DeepSeek 的论文，怎么把编程语言理论里的 effect / coeffect「搬到运行时」，用来解释"插件热插拔为什么这么难做对"？它和本仓库解析的 DeepSeek Harness（下称 dsh）又是什么关系？
 
@@ -8,7 +8,7 @@
 
 ## 一、论文核心与元信息
 
-**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向时空可组合性的编程范式）
+**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向Spatiotemporal Composability的编程范式）
 
 **作者与单位**：Yifan Shi¹²、Wei Zhang¹、Tianyi Cui²。其中 ¹ 为 **Peking University（北京大学）**，² 为 **DeepSeek-AI**。这是一篇学术界与工业界合著的论文——理论骨架来自北大，工程验证来自 DeepSeek 一侧的实践者。
 
@@ -27,7 +27,7 @@
 1. **形式化 revertible effects（§3.1）**：每个 context 变换都配一个显式的逆函数，使得 effect tracking 与 recovery 成为**保持组合运算**的操作，从而保证组件移除时**完全的状态恢复**。这是动态时间可组合性的代数基础。
 2. **形式化 reactive coeffects（§3.2）**：组件把自己的需求声明为一个 typed dependency set，一套基于"满足性"的通知机制自动把状态变迁分类为 **activating / deactivating / neutral**（激活 / 去激活 / 中性）。这是动态空间可组合性的代数基础。
 3. **建立 component lifecycle 模型（§3.3）**并把 effect context 与 coeffect context 整合为**统一的 context type（§3.4）**，构成一套可动态组合的编程范式。
-4. **在 Cordis 中实现（§4）**：一个"时空可组合性元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement / 热模块替换）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
+4. **在 Cordis 中实现（§4）**：一个"Spatiotemporal Composability元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement / 热模块替换）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
 
 ---
 

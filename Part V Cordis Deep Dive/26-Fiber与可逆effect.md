@@ -200,7 +200,7 @@ flowchart TD
 
 ## 五、与论文形式化的对应（交叉引用 Part IV）
 
-把本章的运行时机制逐条对回 Part IV 那篇《时空可组合性》论文，会发现 fiber.ts 几乎是论文第 3 节的"参考实现"：
+把本章的运行时机制逐条对回 Part IV 那篇《Spatiotemporal Composability》论文，会发现 fiber.ts 几乎是论文第 3 节的"参考实现"：
 
 | 论文形式化（Part IV） | fiber.ts 运行时机制 | 证据 |
 |---|---|---|

@@ -1,5 +1,5 @@
 
-# A Programming Paradigm for Spatiotemporal Composability（时空可组合性的编程范式）
+# A Programming Paradigm for Spatiotemporal Composability
 
 > **作者** Yifan Shi（施逸凡）、Wei Zhang、Tianyi Cui
 > **机构** Peking University（北京大学）× DeepSeek-AI
@@ -14,7 +14,7 @@
 
 ### 1.1 一句话概括
 
-把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立时空可组合性的形式基础，并落地为 Cordis。
+把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立Spatiotemporal Composability的形式基础，并落地为 Cordis。
 
 **两维度精确定义**（§1.1，全文的坐标轴）：
 
@@ -30,7 +30,7 @@
 1. **形式化 revertible effects（§3.1）**：每次 context 变换都携带显式逆元并由运行时 track，卸载时结构性地完整回收，确立 local temporal composability。
 2. **形式化 reactive coeffects（§3.2）**：组件把依赖声明为 specification，context 每次变化都按 activating / deactivating / neutral 通知组件，确立 local spatial composability。
 3. **统一 context 范式（§3.3）**：把 effect context 与 coeffect context 合成单一 context 类型 $\Gamma_\infty$，由 coeffect 上的 observational equivalence 赋予 effect 以 independence。
-4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把时空可组合性从单组件推广到交错组件系统。
+4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把Spatiotemporal Composability从单组件推广到交错组件系统。
 5. **Cordis 实现 + Koishi 案例（§5）**：core library（effect tracking + coeffect resolution）+ declarative loader（config reconciliation + HMR），并以 4000+ 插件的 Koishi 生产系统验证。
 
 ### 1.3 元信息表
@@ -77,7 +77,7 @@
 
 **第四步——组件演算 + 五元理论把局部保证抬成系统级。** 以 component（三元组）与 fiber（七元组一次实例）为对象，用十条规则（Table 1，覆盖 Withdrawal / Iteration / Asynchrony / Failure 四类边角）刻画生命周期状态机；五条元理论定理——Preservation（保型）、Recovery exactness + Terminal recovery（时间可组合）、Ordering + Resolution coherence（空间可组合）、Progress（必达 quiescent）、Confluence（quiescent 态由最终配置唯一决定）——把「局部可逆 + 局部响应式」推广到任意交错的组件系统，可组合性至此成为**结构性保证**，并许可「把动态系统当静态装配来推理」。
 
-**第五、六步——落地与验证。** Cordis 是「时空可组合性的 meta-framework」，三层架构（core library / component loader / 应用框架）把理论符号几乎 1:1 映射到 `ctx.*`/`fiber.*`（Table 2），HMR 因此免除开发者手写 acceptance boundary；Koishi（4000+ 插件、四年生产、web console 是第二个独立 Cordis 应用）作 existence-and-adoption 论证。
+**第五、六步——落地与验证。** Cordis 是「Spatiotemporal Composability的 meta-framework」，三层架构（core library / component loader / 应用框架）把理论符号几乎 1:1 映射到 `ctx.*`/`fiber.*`（Table 2），HMR 因此免除开发者手写 acceptance boundary；Koishi（4000+ 插件、四年生产、web console 是第二个独立 Cordis 应用）作 existence-and-adoption 论证。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -586,7 +586,7 @@ _论文 caption 中译_：**图 2 | 含进行中转移的生命周期；两个�
 
 **metatheory（§4.4）**：Preservation（Thm.59，well-formed registry 被规则保持）；Recovery exactness（Thm.61）与 Terminal recovery（Cor.62，退出 fiber 对 state 的贡献归零）；Temporal Composability 由 recover 的 LIFO 精确性给出；Spatial Composability 经 Ordering（Thm.63，依赖满足才转移）与 Resolution coherence（Thm.64，单次转移不跨两次 coeffect 解析）；Progress（Thm.66，≺ 无环即总能推进）；Confluence（Thm.73，到达 quiescent 态时结果唯一）。
 
-**结论（原文，整节）**：把可逆 effect 与响应式 coeffect 合进 component 的生命周期演算，元理论把单组件的时空可组合性**推广到整个交错组件系统**。
+**结论（原文，整节）**：把可逆 effect 与响应式 coeffect 合进 component 的生命周期演算，元理论把单组件的Spatiotemporal Composability**推广到整个交错组件系统**。
 
 </td><td>
 
@@ -894,7 +894,7 @@ L-Unload ───────────────────────�
 <tbody>
 <tr><td>
 
-Cordis 是**时空可组合性的 meta-framework**：不针对具体领域（不像 web routing / ORM / UI），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
+Cordis 是**Spatiotemporal Composability的 meta-framework**：不针对具体领域（不像 web routing / ORM / UI），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
 
 **core library（§5.1）**：Table 2 给出理论构件到运行时的对应（转写见本报告 §5.2）。`ctx` 即一等 context（$\Gamma_\infty$），`ctx.effect(callback)` 实现 $\mathrm{effect}_\Gamma$，回调返回/yield 逆元；`ctx.get/set/isolate/intercept` 对应 coeffect 操作；符号键 `ctx[@@store]/[@@isolate]/[@@intercept]` 对应 $\Sigma/\Sigma^{iso}/\Sigma^{inter}$。**Algorithm 1（Effect tracking）** 展示 `ctx.effect` 的构造：迭代执行回调、把每步 yield 的逆元以 $f\circ g$ 方式组进 disposer，对应 §4.3.2 的 L-Begin/L-Iter/L-Finish 迭代循环。component lifecycle（§5.1.3）用 LOADING/FAILED 等状态实现 §4 的生命周期机。
 
@@ -917,7 +917,7 @@ Table 2 的逐行对应是本文「可落地」主张的核心证据——理论
 
 > **深化 · §5.1 core library 四子层与 §5.2 loader 两机制**
 
-Cordis 定位是**时空可组合性的 meta-framework**：不像 web routing/ORM/UI 那样针对具体领域，唯一职责是供通用动态组合语义。三层架构：
+Cordis 定位是**Spatiotemporal Composability的 meta-framework**：不像 web routing/ORM/UI 那样针对具体领域，唯一职责是供通用动态组合语义。三层架构：
 
 | 层 | 职责 | 对应本报告 |
 | --- | --- | --- |
@@ -1954,7 +1954,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | C1 | 可逆 effect 确立 local temporal composability | §1.2、§2.3.1 | §1.3 贡献 1、§3.1 | ✅ 一致 | 保留 |
 | C2 | 响应式 coeffect 确立 local spatial composability | §1.2、§2.3.2 | §1.3 贡献 2、§3.2 | ✅ 一致 | 保留 |
 | C3 | observational equivalence 供 effect 以 independence | §1.2、§2.3.3 | §1.3 贡献 3、§3.3.2 Thm.40 | ✅ 一致 | 保留 |
-| C4 | 元理论把时空可组合性从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
+| C4 | 元理论把Spatiotemporal Composability从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
 | C5 | Koishi 是 observational、existence-and-generality 论证，非受控对比 | §2.5、§3.5.1 | §5.3（原文明言） | ✅ 一致 | 保留 |
 | C6 | HMR 无需开发者标注 acceptance boundary | §2.4、§四 A.2 | §5.2.2 | ✅ 一致 | 保留 |
 | C7 | in-memory 状态默认不跨 reload 存活 | §2.4、§2.6、§3.5.1 质疑③ | §7.3（"does not survive a reload unless…"） | ✅ 一致 | 保留 |

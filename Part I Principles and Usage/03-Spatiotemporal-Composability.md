@@ -1,6 +1,6 @@
-# 第 03 章 · 时空可组合性范式
+# 第 03 章 · Spatiotemporal Composability
 
-> 本章讲一件事：dsh「一切皆插件」的可替换性，凭什么是可靠的，而不是脆弱的。答案落在它的底座 Cordis 上——一套被形式化为「时空可组合性（Spatiotemporal Composability）」的范式：**时间维**保证组件卸载时副作用能完全回滚（可逆 effect），**空间维**让组件间依赖以响应式方式声明（响应式 coeffect）。读完本章，你能回答：dsh 里的 `ctx.effect()` / disposer / waterfall / epoch 分别对应范式的哪一半，以及 HMR 与卸载回滚在一个 agent harness 里到底意味着什么。
+> 本章讲一件事：dsh「一切皆插件」的可替换性，凭什么是可靠的，而不是脆弱的。答案落在它的底座 Cordis 上——一套被形式化为「Spatiotemporal Composability」的范式：**时间维**保证组件卸载时副作用能完全回滚（可逆 effect），**空间维**让组件间依赖以响应式方式声明（响应式 coeffect）。读完本章，你能回答：dsh 里的 `ctx.effect()` / disposer / waterfall / epoch 分别对应范式的哪一半，以及 HMR 与卸载回滚在一个 agent harness 里到底意味着什么。
 >
 > 证据纪律：dsh 源码可证的机制标 `[verified]`（给 `文件:行号`）；论文范式的内部论断与 Koishi 血缘属**外部一手/二手**，标 `[claimed]`/`[inferred]`，措辞从严。
 
@@ -10,9 +10,9 @@
 
 dsh 的 README 第一段就把底座和它的理论出处摆在明面：项目「powered by Cordis」，而 Cordis 的设计「described in *A Programming Paradigm for Spatiotemporal Composability*」`[verified]`（README.md:7 直接给出论文链接 `cordiverse/paper`）。这不是营销辞令——它是理解整份代码库的钥匙。
 
-值得先点明一件事：这篇论文并非无关第三方之作，而是**北大 × DeepSeek-AI 的联合论文**——PDF 标题页署名 Yifan Shi（北大/DeepSeek）、Wei Zhang（北大）、Tianyi Cui（DeepSeek），而 **Tianyi Cui 正是 dsh 的头号提交者** `[verified]`（论文标题页；git shortlog）。换句话说，写这套框架论文的人，也在写这个 harness。论文的完整精读见《[Part IV · 时空可组合性论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md)》，论文范式↔dsh 源码的逐条映射见《[Part IV · 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)》；本章聚焦"范式如何落到 dsh 源码"。
+值得先点明一件事：这篇论文并非无关第三方之作，而是**北大 × DeepSeek-AI 的联合论文**——PDF 标题页署名 Yifan Shi（北大/DeepSeek）、Wei Zhang（北大）、Tianyi Cui（DeepSeek），而 **Tianyi Cui 正是 dsh 的头号提交者** `[verified]`（论文标题页；git shortlog）。换句话说，写这套框架论文的人，也在写这个 harness。论文的完整精读见《[Part IV · Spatiotemporal Composability论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)》，论文范式↔dsh 源码的逐条映射见《[Part IV · 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)》；本章聚焦"范式如何落到 dsh 源码"。
 
-**时空可组合性**这一范式的核心主张，可以用两句话概括（论文内部论断，`[claimed]`，据公开摘要）：
+**Spatiotemporal Composability**这一范式的核心主张，可以用两句话概括（论文内部论断，`[claimed]`，据公开摘要）：
 
 - **时间可组合性（Temporal）**：组件被卸载时，能**完全回滚**它在生命周期内造成的一切副作用——这被形式化为「可逆 effect（Revertible Effect）」，即一次上下文变换总带着可追踪的逆操作。打个比方：装插件时不只做「安装」，还顺手把「怎么拆」的说明书一并留下；将来要卸载，照着说明书原样撤回即可，绝不会在系统里留下一堆没人清理的垃圾。
 - **空间可组合性（Spatial）**：组件间的依赖以**响应式**方式声明——被形式化为「响应式 coeffect（Reactive Coeffect）」，当上下文匹配某个 spec（某服务出现/消失）时，依赖它的组件被通知并随之激活/失活。这里的「响应式」类比电路里的自动开关：插件不用自己盯着「我依赖的服务到了没」，而是声明「我需要 X」，等 X 一出现框架就自动把它点亮，X 一消失就自动让它熄灭——顺序全由框架算，无需人排。
@@ -31,7 +31,7 @@ dsh 把这两条直接翻译成了工程铁律。它的 Cordis primer 把整个�
 2. **依赖顺序问题**：LLM provider 依赖 credentials 服务，工具 Consumer 依赖 `ctx.tools`，subagent 依赖 `ctx.agents`。若靠手写 boot 顺序，任何一次插件增删都要重排启动序列——这就像每加一个新家电就得回去重画一遍全屋的通电顺序表，在数百个包（219 个 workspace 包）、可任意组合的 profile 下根本不可维护。
 3. **热替换问题**：开发时改一行插件代码要能立刻生效；运行时用户改 profile 补丁要能不重启就重新组装。这要求「卸旧 + 装新」是一个可靠的原子操作。
 
-传统插件系统往往只解决「加载」，把「卸载回滚」和「依赖响应」留给插件作者自觉——于是脆弱。时空可组合性范式的价值，正是把这三件事变成**框架的内建不变量**而非作者的纪律。
+传统插件系统往往只解决「加载」，把「卸载回滚」和「依赖响应」留给插件作者自觉——于是脆弱。Spatiotemporal Composability范式的价值，正是把这三件事变成**框架的内建不变量**而非作者的纪律。
 
 ## 三、解决思路与方案
 
@@ -42,7 +42,7 @@ dsh 不自造轮子，而是 vendored（源码内嵌，即把第三方代码直�
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TD
-  Paper["时空可组合性范式 (论文)"]
+  Paper["Spatiotemporal Composability范式 (论文)"]
   Paper --> T["时间维: 可逆 effect"]
   Paper --> S["空间维: 响应式 coeffect"]
 
@@ -213,9 +213,9 @@ flowchart LR
 
 ## 小结与衔接
 
-时空可组合性范式给了 dsh 一个别的 harness 少有的底气：**可逆 effect（时间维）让卸载无残留，响应式 coeffect（空间维）让依赖免排序**，两者叠加使「连内核都是插件」的激进主张在工程上站得住。它不是「热重载插件系统」的花名，而是把回滚与依赖响应做成框架级不变量的一套范式——尽管「完全回滚」在实现里仍有靠补丁与约定兜底的边界。
+Spatiotemporal Composability范式给了 dsh 一个别的 harness 少有的底气：**可逆 effect（时间维）让卸载无残留，响应式 coeffect（空间维）让依赖免排序**，两者叠加使「连内核都是插件」的激进主张在工程上站得住。它不是「热重载插件系统」的花名，而是把回滚与依赖响应做成框架级不变量的一套范式——尽管「完全回滚」在实现里仍有靠补丁与约定兜底的边界。
 
-> **↔ 论文对应**：把上述局部的可逆 effect（时间维）与响应式 coeffect（空间维）抬成系统级不变量，正是论文用**五条元理论定理**给出的时空可组合性证明——Preservation（Thm.59）、Temporal（Recovery exactness Thm.61 + Terminal recovery Cor.62）、Spatial（Ordering Thm.63、Resolution coherence Thm.64）、Progress（Thm.66）、Confluence（Thm.73）。五条定理的完整陈述、前提与证明骨架已在 [Part IV §2.3.4](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) 完整给出，此处不再重复展开 `[verified]`。
+> **↔ 论文对应**：把上述局部的可逆 effect（时间维）与响应式 coeffect（空间维）抬成系统级不变量，正是论文用**五条元理论定理**给出的Spatiotemporal Composability证明——Preservation（Thm.59）、Temporal（Recovery exactness Thm.61 + Terminal recovery Cor.62）、Spatial（Ordering Thm.63、Resolution coherence Thm.64）、Progress（Thm.66）、Confluence（Thm.73）。五条定理的完整陈述、前提与证明骨架已在 [Part IV §2.3.4](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) 完整给出，此处不再重复展开 `[verified]`。
 
 承上启下：本章解释了「凭什么可替换」；下一章（Ch04 profile/bundle 组装）将展示这套可组合性**如何被组织成用户可选的 profile 与 bundle 补丁层**，即 base bundle 里那句「activation is service-availability driven」在配置面的完整故事。而 waterfall/事件分类学作为扩展点的细节，留待 Ch05；agent loop 作为唯一具体 loop 插件的实现，见 Ch06。
 

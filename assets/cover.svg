@@ -966,10 +966,10 @@
 <rect x="1184.8" y="191.4" width="38.5" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
 <text x="1204.0" y="203.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">MCP</text>
 </g>
-<line x1="980" y1="75" x2="1271" y2="226" stroke="#c79a3c" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>
-<text x="1126" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f">时间维 · 可逆 effect（φ⁻¹ 回滚）</text>
-<line x1="970" y1="85" x2="679" y2="236" stroke="#c79a3c" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>
-<text x="964" y="161" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f" transform="rotate(-90 964 161)">空间维 · 响应式 coeffect（notify）</text>
+<text x="812" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f">空间维 · 响应式 coeffect（notify）</text>
+<line x1="812" y1="68" x2="742" y2="116" stroke="#c79a3c" stroke-width="1.5" marker-end="url(#ah)" opacity="0.9"/>
+<text x="1120" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f">时间维 · 可逆 effect（φ⁻¹ 回滚）</text>
+<line x1="1120" y1="68" x2="1190" y2="116" stroke="#c79a3c" stroke-width="1.5" marker-end="url(#ah)" opacity="0.9"/>
 <line x1="1300.0" y1="46.0" x2="1340.0" y2="86.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
 <line x1="1340.0" y1="86.0" x2="1300.0" y2="126.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
 <line x1="1300.0" y1="126.0" x2="1260.0" y2="86.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
@@ -992,7 +992,7 @@
     <text x="66" y="298" font-size="62" font-weight="800" fill="#20242c">Source Analysis</text>
     <text x="70" y="346" font-size="22" fill="#5b6472">源码深度解析 · Deep Dive into Agent-Harness Engineering</text>
     <rect x="70" y="366" width="470" height="2.5" fill="url(#wireH)"/>
-    <text x="70" y="396" font-size="16" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · 时空可组合性 · 可逆 effect ⊕ 响应式 coeffect</text>
+    <text x="70" y="396" font-size="16" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · Spatiotemporal Composability · effect ⊕ coeffect</text>
     <text x="70" y="420" font-size="13" fill="#9a8a5a" font-family="ui-monospace,Menlo,monospace">Cordis 底座 · ∂Γ / Γ∞ · Preservation·Progress·Confluence</text>
   </g>
 <text x="1374" y="448" text-anchor="end" font-size="16" fill="#8a94a6" font-family="ui-monospace,Menlo,monospace">xiaonan.cs@gmail.com</text>

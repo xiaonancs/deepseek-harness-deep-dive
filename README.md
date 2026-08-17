@@ -7,7 +7,7 @@
 - 📚 [Part I 理念与使用](#part-i-理念与使用)
 - 🔧 [Part II 源码剖析](#part-ii-源码剖析)
 - 🧭 [Part III 对比与元](#part-iii-对比与元)（含 Ch21 参考底座 Cordis 深度对比）
-- 📄 [论文导读 · 时空可组合性范式](Appendix/论文导读-时空可组合性范式.md) · 📘 [官方文档对照](Appendix/官方文档对照.md)
+- 📄 [论文导读 · 时空可组合性范式](Appendix/论文导读-时空可组合性范式.md) · 📘 [官方文档对照](Appendix/官方文档对照.md) · 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md)
 - 📎 [Appendix 附录](Appendix/)
 
 ## 这份研究是什么
@@ -63,6 +63,7 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 
 - 📄 [论文导读 · 时空可组合性范式](Appendix/论文导读-时空可组合性范式.md) —— 北大×DeepSeek 论文精读 + 论文↔dsh 逐条映射
 - 📘 [官方文档对照](Appendix/官方文档对照.md) —— 官方开发者文档站与本研究的印证/补充/修正
+- 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md) —— 社区第三方反推报告（泄漏/镜像证据）整理与源码交叉核实（`[claimed]` 为主）
 - 📎 [Appendix/](Appendix/) —— 上游、证据等级约定、免责
 
 ## 免责

@@ -90,7 +90,7 @@ watch 到一次文件变化后，按三条路分流（`hmr/index.ts:127-152`）�
 
 `partialReload()` 的事务性体现在四步（`hmr/index.ts:229-378`）：
 
-1. **分类**：`analyzeChanges()` 把所有文件分成 `accepted`（该重载：改动文件及其上游依赖者）与 `declined`（不该重载：externals 及其纯下游）。这是一个在依赖图上传播的定点迭代——一个文件只要有一个"依赖它的人"被 accept，它自己就被 accept（`hmr/index.ts:174-227`）。
+1. **分类**：`analyzeChanges()` 把所有文件分成 `accepted`（该重载：改动文件及其上游依赖者）与 `declined`（不该重载：externals 及其纯下游）。这是一个在依赖图上传播的定点迭代（反复传播直到不再有新增、抵达稳定点）——一个文件只要有一个"依赖它的人"被 accept，它自己就被 accept（`hmr/index.ts:174-227`）。
 2. **清缓存并备份**：对每个 `accepted` 文件，从 ESM `loadCache` 和 CJS（CommonJS，Node 早期用 `require`/`module.exports` 的模块系统）`require.cache` 里删除，但**先把删掉的对象存进 `esmBackup/cjsBackup`**（`hmr/index.ts:290-309`）。备份就是回滚的本钱。
 3. **试装新**：`await import` 重新导入每个受影响的插件入口；**任何一个抛错，立即 `rollback()`（把备份写回缓存）并返回**（`hmr/index.ts:320-329`）——此时旧插件尚未卸载，等于什么都没发生。
 4. **换实例**：对每个要重载的插件，先 `registry.delete(旧plugin)` 卸掉旧 fiber，再用新导出 `registry.plugin` 挂新 fiber，并把旧 fiber 的 `entry` 关系接到新 fiber 上（`reload()`，`hmr/index.ts:331-360`）。若这一步中途抛错，进 `catch`：`rollback()` 缓存 + 把已装的新插件删掉 + 用旧 plugin 重新挂回（`hmr/index.ts:361-374`）。全成功才 `emit('hmr/reload')` 并清空 `stashed`。

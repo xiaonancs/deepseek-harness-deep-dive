@@ -1,4 +1,4 @@
-# 论文导读：Spatiotemporal Composability范式
+# 论文导读：Spatiotemporal Composability 范式
 
 > 读完能回答：一篇北大 × DeepSeek 的论文，怎么把编程语言理论里的 effect / coeffect「搬到运行时」，用来解释"插件热插拔为什么这么难做对"？它和本仓库解析的 DeepSeek Harness（下称 dsh）又是什么关系？
 
@@ -8,7 +8,7 @@
 
 ## 一、论文核心与元信息
 
-**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向Spatiotemporal Composability的编程范式）
+**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向Spatiotemporal Composability 的编程范式）
 
 **作者与单位**：Yifan Shi¹²、Wei Zhang¹、Tianyi Cui²。其中 ¹ 为 **Peking University（北京大学）**，² 为 **DeepSeek-AI**。这是一篇学术界与工业界合著的论文——理论骨架来自北大，工程验证来自 DeepSeek 一侧的实践者。
 
@@ -19,21 +19,22 @@
 **开篇动机（§1）**：论文用 VSCode 插件生态做实证切入。
 
 - **时间维的局限**：扩展一旦加载，其可执行代码无法在运行时卸载——作者统计 top100 扩展中有 **87 个**包含可执行代码、需要重启才能真正卸下。
-- **空间维的局限**：扩展间依赖几乎无法表达——top100 中仅 **7 个**声明了 `extensionDependencies`，而拿到别的扩展导出的 API（Application Programming Interface，应用程序编程接口；这里即 `getExports` 拿到的那批导出函数）时**没有类型**。
+- **空间维的局限**：扩展间依赖几乎无法表达——top100 中仅 **7 个**声明了 `extensionDependencies`，而拿到别的扩展导出的 API（Application Programming Interface，应用程序编程接口；这里即 `getExtension(...).exports` 拿到的那批导出函数）时**没有类型**。
 - 现实里大家的"粗粒度绕过"（coarse-grained workaround）就是重启进程 / 容器：一个模块行为异常就重启整个进程，一个服务依赖就交给编排器管。代价很大——重启会丢掉进程内所有累积状态（缓存、连接、部分计算），重建要数秒到数分钟；为了维持可用性还得堆冗余副本。论文点名 **self-evolving agent harness**（会自我改写、替换自身组件的智能体运行时）是这一需求最尖锐的新场景。
 
-**四条贡献（§1.3，与 PDF（Portable Document Format，可移植文档格式，这里指论文原文的 PDF 文件）第 6 页逐条核对一致）**：
+**五条贡献（§1.3，与 PDF（Portable Document Format，可移植文档格式，这里指论文原文的 PDF 文件）第 6 页逐条核对一致）**：
 
 1. **形式化 revertible effects（§3.1）**：每个 context 变换都配一个显式的逆函数，使得 effect tracking 与 recovery 成为**保持组合运算**的操作，从而保证组件移除时**完全的状态恢复**。这是动态时间可组合性的代数基础。
 2. **形式化 reactive coeffects（§3.2）**：组件把自己的需求声明为一个 typed dependency set，一套基于"满足性"的通知机制自动把状态变迁分类为 **activating / deactivating / neutral**（激活 / 去激活 / 中性）。这是动态空间可组合性的代数基础。
-3. **建立 component lifecycle 模型（§3.3）**并把 effect context 与 coeffect context 整合为**统一的 context type（§3.4）**，构成一套可动态组合的编程范式。
-4. **在 Cordis 中实现（§4）**：一个"Spatiotemporal Composability元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement，热模块替换，简称 HMR，指程序运行中直接换掉某个模块而不整体重启）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
+3. **统一 context 类型（§3.3）**：把 effect context 与 coeffect context 整合为**单一 context type**，由 coeffect 上的 observational equivalence 赋予 effect 以 independence，构成一套面向Spatiotemporal Composability 的编程范式。
+4. **动态组合演算（§4）**：把两种机制合进 component 概念、为其生命周期赋予 operational semantics，元理论把Spatiotemporal Composability 从单组件推广到交错组件系统。
+5. **在 Cordis 中实现（§5）**：一个"Spatiotemporal Composability 元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement，热模块替换，简称 HMR，指程序运行中直接换掉某个模块而不整体重启）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
 
 ---
 
-## 二、逐节精读（含关键公式与四图重绘）
+## 二、逐节精读（含关键公式与生命周期图解）
 
-论文共 7 节：1 Introduction、2 Preliminaries、3 核心形式化、4 实现与案例、5 Discussion、6 Related Work、7 Conclusion。这里聚焦第 2、3 节的形式化骨架——这是全文最硬也最值钱的部分。
+论文共 8 节：1 Introduction、2 Preliminaries、3 Revertible Effects & Reactive Coeffects、4 A Calculus of Dynamic Composition、5 Implementation & Case Study、6 Discussion、7 Related Work、8 Conclusion。这里聚焦第 2、3、4 节的形式化骨架——这是全文最硬也最值钱的部分。
 
 ### 2.1 Preliminaries：effect 与 coeffect 的经典分工（§2）
 
@@ -82,11 +83,13 @@ $$\sigma \vDash d := \forall k \in d.\; k \in \mathrm{dom}(\sigma)$$
 - **isolation realm $\Sigma^{iso}$**：同一个 key 在不同 realm 里解析出不同的值 → 相当于**运行时的 ad-hoc 多态**，用于多租户、测试、沙箱。
 - **interception $\Sigma^{inter}$**：对依赖访问附加横切元数据（例如给文件系统访问加"哪些路径可读可写"的策略）；采用**右偏合并**，让外层 context 能"约束"组件而**不必改动组件本身**。类比：像给插座加一个限流保护套，灯泡不用换。
 
-### 2.4 组件生命周期与四张图（§3.3）
+### 2.4 统一 context 与组件生命周期（§3.3 统一 context + §4 演算）
 
-论文用一个**统一的 context 类型**把上述一切收口。组件被定义为依赖与 effect 的乘积再加一份可变生命周期态：
+论文用一个**统一的 context 类型**把上述一切收口。组件（component，§4.1 Def.43）被定义为依赖规格、提供集与可逆 effect 的**三元组**：
 
-$$\mathfrak{C}_\Gamma := \mathfrak{D}_\Gamma \times \mathfrak{E}_\Gamma$$
+$$\mathfrak{C}_\Gamma := \mathfrak{D}_\Gamma \times \mathfrak{P}_\Gamma \times \mathfrak{E}^*_\Gamma$$
+
+（$\mathfrak{D}_\Gamma$＝声明依赖 / $\mathfrak{P}_\Gamma$＝可提供键集 / $\mathfrak{E}^*_\Gamma$＝带 witness 的可逆 effect function）；其一次运行实例 **fiber**（Def.44）才携带 parent、自有依赖表、退休标志与那份可变生命周期态。
 
 而全局统一 context 是一个自相似的递归类型：
 
@@ -94,7 +97,7 @@ $$\Gamma_\infty := \mu\Gamma.\; \Gamma \times (\Gamma \to \Gamma) \times \Sigma$
 
 它自我嵌套（$\Sigma$ 里又装着 context），且 $\Sigma$ **subsumes 一切共享可变态**——一个类型统吃状态、逆、依赖。论文还区分了两种实现风格：**in-place**（原地修改、逆函数非平凡）与 **derived**（返回新 context、逆就是丢弃该 id 对应的派生物，恢复即"扔掉"）。
 
-下面用白底 mermaid 重绘论文的四张图。
+论文本身只含**两张图**（Fig.1 基础生命周期、Fig.2 含进行中转移的生命周期）。下面用白底 mermaid 呈现四张图解：图 1 与图 4 分别重绘论文这两张图，图 2、图 3 是对 §4 相关概念（迭代式多步迁移、target/committed view 版本化）的补充图解，并非论文的编号图。
 
 #### 图 1：base lifecycle（组件基础生命周期，对应论文 Fig.1）
 
@@ -114,7 +117,7 @@ stateDiagram-v2
 
 <p>图注：组件的基础生命周期只有两个稳定态——INACTIVE 与 ACTIVE；两条迁移动作 RELOAD 与 UNLOAD 分别对应 coeffect 通知里的 activating 与 deactivating。UNLOAD 触发时执行可逆 effect 的逆，把副作用完全回滚。</p>
 
-#### 图 2：iterative transition（可中断的多步迁移，对应论文 Fig.2）
+#### 图 2：iterative transition（可中断的多步迁移，图解论文 §4.3.2；补充图，非论文编号图）
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -133,14 +136,14 @@ flowchart LR
 
 <p>图注：一次组件迁移被拆成若干 step，step 之间的边界是天然的可中断点。论文把这套多步执行刻画为 reified delimited continuation（被具体化的定界续延），它正对应主流语言里的 yield——迁移可以在 step 边界暂停、撤回或重来。</p>
 
-#### 图 3：epoch 版本化目标态（星形拓扑，对应论文 Fig.3）
+#### 图 3：目标态版本化（星形拓扑，图解论文 §4 的 target/committed view；补充图，非论文编号图）
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TD
-    E["epoch 目标态<br/>ε_d(σ) = 依赖当前取值快照"]
+    E["target view 目标态<br/>各声明键 → 当前 provider fiber"]
     E --> D1[依赖 k1]
     E --> D2[依赖 k2]
     E --> D3[依赖 k3]
@@ -151,9 +154,9 @@ flowchart TD
 
 </div>
 
-<p>图注：epoch 定义为 ε_d(σ) := ⟨σ(k) | k ∈ d⟩——把依赖集当前取值打包成一个"版本号"。组件持有的 epoch 与最新 epoch 不一致，即说明目标态已陈旧、需要 reload。星形结构里每条依赖各配一条分支通向 INACTIVE，任一依赖失效都能独立触发去激活。</p>
+<p>图注：本图是对论文机制的补充图解——论文并未使用"epoch"一词，其对应构造是 committed view $\omega$ 与 target view（Def.44/46），把组件每个声明键映到当前 provider fiber 的**名字**（而非取值快照），二者不一致即说明目标态已陈旧、需要 reload（记 provider 名而非值，正是为了让"另一 fiber 提供相等的值"不被误判为变化）。星形结构里每条依赖各配一条分支通向 INACTIVE，任一依赖失效都能独立触发去激活。</p>
 
-#### 图 4：inertial state machine（惯性态处理异步，对应论文 Fig.4）
+#### 图 4：inertial state machine（惯性态处理异步，对应论文 Fig.2「含进行中转移的生命周期」）
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -173,24 +176,24 @@ stateDiagram-v2
 
 <p>图注：异步是热插拔的头号敌人——组件还在加载途中，目标态又变了怎么办？论文把 RELOAD / UNLOAD 提升为"惯性态"（inertial states）：正在进行的迁移必须跑完，才去响应最新目标态，避免半途切换导致状态错乱。这是把图 1 的两态机在异步世界里做的加固。</p>
 
-### 2.5 与既有范式的对照（§3.4.2）
+### 2.5 与既有范式的对照（§3.3.3 Situating the Context Paradigm）
 
 论文明确把自己和两类主流做法做了对比：
 
 - **vs 函数式 State monad**：monad 需要显式地把状态"穿线"（threading）过每一步，人体工学差；可逆 effect 把逆藏在 context 里，调用方无感。
 - **vs 命令式 / OOP（Object-Oriented Programming，面向对象编程）的隐式变更**：React 的 `useEffect` 靠"调用顺序"隐式建立依赖与清理，脆弱；Spring 的 `getBean` 靠运行时反射拿依赖，无类型、无生命周期协调。可逆 effect + 响应式 coeffect 把这些都显式化、可追踪化。
 
-### 2.6 实现与案例（§4）、讨论（§5）要点
+### 2.6 实现与案例（§5）、讨论（§6）要点
 
-**Cordis / Koishi（§4.3）**：Koishi 建立在 Cordis 之上（Koishi 用 v3，本文形式化对应 v4）；论文直言"**Koishi 的 plugin 就是本文说的 component**"。Koishi 有两个独立运行时——服务端 bot 与浏览器里的 web console——都跑在 Cordis 上。作者诚实标注了 threats to validity：这是**单生态、单语言**的验证，性质上是 "existence-and-adoption"（存在性与被采用度）而非定量基准。
+**Cordis / Koishi（§5.3）**：Koishi 建立在 Cordis 之上（Koishi 用 v3，本文形式化对应 v4）；论文直言"**Koishi 的 plugin 就是本文说的 component**"。Koishi 有两个独立运行时——服务端 bot 与浏览器里的 web console——都跑在 Cordis 上。作者诚实标注了 threats to validity：这是**单生态、单语言**的验证，性质上是 "existence-and-adoption"（存在性与被采用度）而非定量基准。
 
-**Discussion（§5）**几个值得记住的点：
+**Discussion（§6）**几个值得记住的点：
 
-- **§5.1 service multiplexing**：从 exclusive binding（独占绑定）走向 service broker（服务代理），后者能支撑负载均衡、滚动更新、跨进程调用。
-- **§5.2 access control**：`inject` 是"能力请求"，context proxy 是"能力中介"，因而**静态可审批**；interception 做细粒度策略（如 fs（file system，文件系统）元数据）。但论文态度很诚实：**沙箱化不可信组件，需要语言之外的执行边界**（SFI（Software Fault Isolation，软件故障隔离，一种在同一进程内用指令级检查把不可信代码"关"起来的技术）、隔离运行时、沙箱进程、虚拟容器），经由 bridge 接入。
-- **§5.3 语言无关性**：时间维需要 closures + 运行时可引入 / 撤回模块（managed 语言用模块注册表、native 用 `dlopen`/`dlclose`、wasm（WebAssembly，一种可在多种宿主里运行的可移植字节码格式）看 embedder）；空间维需要依赖注入（类型层用 typeclass / trait / TS（TypeScript，带静态类型的 JavaScript）module augmentation，运行时用 Proxy / `__get__` / 反射）。
-- **§5.4 相互依赖**：出现环 → 静态可预测的"永久 INACTIVE"，而**非死锁**；可分解为单向绑定，代价是组件数增多，用 bundling / 约定接线 / 脚手架缓解。
-- **§5.5 依赖类型与版本**：key 靠名义链接会有 interface drift、key collision；三条出路——key namespacing / peer dependencies（Cordis 现用）/ structural compatibility。
+- **§6.2 service multiplexing**：从 exclusive binding（独占绑定）走向 service broker（服务代理），后者能支撑负载均衡、滚动更新、跨进程调用。
+- **§6.3 access control**：`inject` 是"能力请求"，context proxy 是"能力中介"，因而**静态可审批**；interception 做细粒度策略（如 fs（file system，文件系统）元数据）。但论文态度很诚实：**沙箱化不可信组件，需要语言之外的执行边界**（SFI（Software Fault Isolation，软件故障隔离，一种在同一进程内用指令级检查把不可信代码"关"起来的技术）、隔离运行时、沙箱进程、虚拟容器），经由 bridge 接入。
+- **§6.4 语言无关性**：时间维需要 closures + 运行时可引入 / 撤回模块（managed 语言用模块注册表、native 用 `dlopen`/`dlclose`、wasm（WebAssembly，一种可在多种宿主里运行的可移植字节码格式）看 embedder）；空间维需要依赖注入（类型层用 typeclass / trait / TS（TypeScript，带静态类型的 JavaScript）module augmentation，运行时用 Proxy / `__get__` / 反射）。
+- **§6.5 相互依赖**：出现环 → 静态可预测的"永久 INACTIVE"，而**非死锁**；可分解为单向绑定，代价是组件数增多，用 bundling / 约定接线 / 脚手架缓解。
+- **§6.6 依赖类型与版本**：key 靠名义链接会有 interface drift、key collision；三条出路——key namespacing / peer dependencies（Cordis 现用）/ structural compatibility。
 
 ---
 
@@ -209,7 +212,7 @@ stateDiagram-v2
 论文的 typed dependency context 与满足性通知，对应 dsh 的 `inject`（声明依赖）+ fiber 的 epoch 机制（`_setEpoch` / `_refresh`），以及 PENDING ↔ ACTIVE 的状态切换。见 Ch03 / Ch05 / Ch11。
 
 - **notify 的 activating / deactivating** ↔ epoch 变化触发 dsh 的 `_reload` / `_unload`。依赖刚满足 → `_reload` 激活；依赖失效 → `_unload` 卸载并回滚。
-- 论文的 **epoch $\varepsilon_d(\sigma)$**（图 3）直接对应 dsh fiber 里同名的 epoch 概念——用版本号检测"目标态是否陈旧"。
+- 论文的 **committed view / target view**（Def.44/46，把声明键映到当前 provider fiber 的名字；见图 3）对应 dsh fiber 里的 epoch 机制——都用"版本"检测"目标态是否陈旧"（注：论文本身不使用"epoch"一词，epoch 是 dsh 侧的实现名）。
 
 ### 3.3 idempotent guard 与 effect iterator
 
@@ -224,23 +227,23 @@ stateDiagram-v2
 ### 3.5 统一 context 与 service multiplexing
 
 - **统一 $\Gamma_\infty$** ↔ Cordis 的 `ctx` / dsh 的 fiber：一个自相似类型承载状态、逆与依赖。
-- **service multiplexing（§5.1）** ↔ dsh 的多个"注册表 / 提供者"场景：LLM（Large Language Model，大语言模型）适配器注册表（Ch10）、subagent providers（Ch15）、SDK（Software Development Kit，软件开发工具包）与 ACP（Agent Client Protocol，智能体客户端协议，一套让外部编辑器等程序驱动 harness 会话的接口）之间的桥接（Ch17）。这些正是"从独占绑定走向服务代理"的工程化身。
+- **service multiplexing（§6.2）** ↔ dsh 的多个"注册表 / 提供者"场景：LLM（Large Language Model，大语言模型）适配器注册表（Ch10）、subagent providers（Ch15）、SDK（Software Development Kit，软件开发工具包）与 ACP（Agent Client Protocol，智能体客户端协议，一套让外部编辑器等程序驱动 harness 会话的接口）之间的桥接（Ch17）。这些正是"从独占绑定走向服务代理"的工程化身。
 
 ### 3.6 一个诚实立场的共振：沙箱需要语言之外的边界
 
-论文 §5.2 明说：**要真正隔离不可信组件，光靠语言机制不够，必须有语言之外的执行边界**。dsh 采取了完全一致的立场——"steering not containment"（引导而非围栏），真正需要强隔离时接入 E2B（一个把代码放进云端隔离沙箱里执行的外部服务）等外部沙箱（Ch13）。两者在这一点上是同一种工程诚实：可逆 effect 管得住"善意组件的副作用回滚"，管不住"恶意组件的越权"，后者交给进程 / 容器边界。
+论文 §6.3 明说：**要真正隔离不可信组件，光靠语言机制不够，必须有语言之外的执行边界**。dsh 采取了完全一致的立场——"steering not containment"（引导而非围栏），真正需要强隔离时接入 E2B（一个把代码放进云端隔离沙箱里执行的外部服务）等外部沙箱（Ch13）。两者在这一点上是同一种工程诚实：可逆 effect 管得住"善意组件的副作用回滚"，管不住"恶意组件的越权"，后者交给进程 / 容器边界。
 
 ### 3.7 作者链与"工程验证体"推断
 
 - **Tianyi Cui** 既是本论文的共同作者（² DeepSeek-AI），又是 dsh 的**头号提交者**——git 已核实其 5235 commits [verified]。
 - README 里的 paper 链接由 Shigma 提交；**Yifan Shi 可能即 Shigma** [inferred]（音 / 名相合，但未在论文正文取得直接证据，措辞保守）。
-- 论文 §7 Conclusion 把 **self-evolving agent harness** 明确列为该范式的未来验证方向（AI agent 持续生成 / 替换自身 harness 组件，用以验证"快速替换下的完全恢复"与"频繁拓扑变化下的依赖协调"）。
+- 论文 §8 Conclusion 把 **self-evolving agent harness** 明确列为该范式的未来验证方向（AI agent 持续生成 / 替换自身 harness 组件，用以验证"快速替换下的完全恢复"与"频繁拓扑变化下的依赖协调"）。
 
 把这几条串起来：**dsh 很可能正是这篇论文所构想范式的一个工程验证体**——一个真实的 self-evolving agent harness，其可逆 effect / 响应式 coeffect 机制与论文形式化高度同构，且作者与代码提交者存在交集。这是**有据推断 [inferred]**，本导读在措辞上保持谨慎：论文正文并未点名 dsh，此结论建立在机制同构 + 作者链 + Conclusion 明示方向三条证据之上，而非论文的直接声明。
 
 ---
 
-## 四、与相关工作的定位（据 §6）
+## 四、与相关工作的定位（据 §7 Related Work）
 
 论文的 Related Work 用一连串"vs"精准划出自己的坐标。理解这些对比，能帮你把这篇工作放进整个学术谱系：
 
@@ -265,8 +268,8 @@ stateDiagram-v2
 ### 【论文事实】（据 PDF 及已核实 source-truth）
 
 - 标题、作者（Yifan Shi¹²、Wei Zhang¹、Tianyi Cui²）、单位（¹北京大学、²DeepSeek-AI）：已用 Read 打开 PDF **第 1 页**核对一致 [verified]。
-- 四条贡献（revertible effects / reactive coeffects / component lifecycle + unified context / Cordis 实现 + Koishi 4000+ 插件验证）：已用 Read 打开 PDF **第 6 页**逐条核对一致 [verified]。
-- 7 节结构、VSCode 统计（top100 中 87 个含可执行码、7 个声明 extensionDependencies）、各公式定义（$\partial\Gamma$、$\mathfrak{E}_\Gamma$、$\Sigma$、满足谓词、epoch、$\Gamma_\infty$ 等）、四张图语义、§4–§6 论点：来自已核实的 source-truth [claimed by source-truth]。**边界说明**：本导读**未逐页复核**这些公式的排版细节与 §2–§6 全文，公式与图的转述以 source-truth 为准；如需引用到论文原文的精确记号，请回到 PDF 对应小节复核。
+- 五条贡献（revertible effects §3.1 / reactive coeffects §3.2 / 统一 context 类型 §3.3 / 动态组合演算 §4 / Cordis 实现 §5 + Koishi 4000+ 插件验证）：已用 Read 打开 PDF **第 6 页**逐条核对一致 [verified]。
+- 8 节结构、VSCode 统计（top100 中 87 个含可执行码、7 个声明 extensionDependencies）、各公式定义（$\partial\Gamma$、$\mathfrak{E}_\Gamma$、$\Sigma$、满足谓词、committed/target view、$\Gamma_\infty$ 等）、两张图（Fig.1/Fig.2）语义、§4–§7 论点：来自已核实的 source-truth [claimed by source-truth]。**边界说明**：本导读**未逐页复核**这些公式的排版细节与 §2–§7 全文，公式与图的转述以 source-truth 为准；如需引用到论文原文的精确记号，请回到 PDF 对应小节复核。
 
 ### 【报告推断】（dsh 侧映射与关系判断）
 
@@ -276,11 +279,11 @@ stateDiagram-v2
 - turn / step 边界 ↔ effect iterator（delimited continuation）：Ch06，结构同构 [inferred]。
 - isolate realm / per-session preset ↔ isolation realm（Ch04 / Ch11）；fs-policy / sandbox-policy / waterfall ↔ interception（Ch14 / Ch13 / Ch05 / Ch09）[verified]。
 - LLM 适配器注册表 / subagent providers / SDK-ACP ↔ service multiplexing：Ch10 / Ch15 / Ch17 [verified]。
-- "steering not containment" + E2B ↔ §5.2 沙箱需外部执行边界：Ch13 [verified]，立场一致性判断 [inferred]。
+- "steering not containment" + E2B ↔ §6.3 沙箱需外部执行边界：Ch13 [verified]，立场一致性判断 [inferred]。
 - Tianyi Cui 为 dsh 头号提交者（5235 commits）且论文共同作者：git 已核实 [verified]。
 - Yifan Shi 可能即 Shigma：[inferred]，未取得论文正文直接证据。
-- "dsh 是这篇论文构想的工程验证体"：**有据推断 [inferred]**，建立在机制同构 + 作者链 + §7 明示 self-evolving harness 为验证方向三条证据上；论文正文并未点名 dsh。
+- "dsh 是这篇论文构想的工程验证体"：**有据推断 [inferred]**，建立在机制同构 + 作者链 + §8 明示 self-evolving harness 为验证方向三条证据上；论文正文并未点名 dsh。
 
 ---
 
-**收尾**：这篇论文最动人的地方，在于它把一个工程界习以为常的"重启大法"，还原成一个有精确形式基础的理论缺口，并给出了"可逆 effect × 响应式 coeffect"这一对优雅的答案。而 §7 那句把 self-evolving agent harness 列为未来验证方向的话，几乎就是为 dsh 这类系统写的注脚——理论与工程，在这里对上了暗号。
+**收尾**：这篇论文最动人的地方，在于它把一个工程界习以为常的"重启大法"，还原成一个有精确形式基础的理论缺口，并给出了"可逆 effect × 响应式 coeffect"这一对优雅的答案。而 §8 那句把 self-evolving agent harness 列为未来验证方向的话，几乎就是为 dsh 这类系统写的注脚——理论与工程，在这里对上了暗号。

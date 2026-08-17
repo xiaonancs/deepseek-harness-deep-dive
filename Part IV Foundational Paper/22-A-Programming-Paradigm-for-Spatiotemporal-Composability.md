@@ -14,7 +14,7 @@
 
 ### 1.1 一句话概括
 
-把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立Spatiotemporal Composability的形式基础，并落地为 Cordis。
+把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立Spatiotemporal Composability 的形式基础，并落地为 Cordis。
 
 **两维度精确定义**（§1.1，全文的坐标轴）：
 
@@ -30,7 +30,7 @@
 1. **形式化 revertible effects（§3.1）**：每次 context 变换都携带显式逆元并由运行时 track，卸载时结构性地完整回收，确立 local temporal composability。
 2. **形式化 reactive coeffects（§3.2）**：组件把依赖声明为 specification，context 每次变化都按 activating / deactivating / neutral 通知组件，确立 local spatial composability。
 3. **统一 context 范式（§3.3）**：把 effect context 与 coeffect context 合成单一 context 类型 $\Gamma_\infty$，由 coeffect 上的 observational equivalence 赋予 effect 以 independence。
-4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把Spatiotemporal Composability从单组件推广到交错组件系统。
+4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把Spatiotemporal Composability 从单组件推广到交错组件系统。
 5. **Cordis 实现 + Koishi 案例（§5）**：core library（effect tracking + coeffect resolution）+ declarative loader（config reconciliation + HMR，Hot Module Replacement 热模块替换：文件改动后不重启进程、就地换掉受影响模块），并以 4000+ 插件的 Koishi 生产系统验证。
 
 ### 1.3 元信息表
@@ -77,7 +77,7 @@
 
 **第四步——组件演算 + 五元理论把局部保证抬成系统级。** 以 component（三元组）与 fiber（七元组一次实例）为对象，用十条规则（Table 1，覆盖 Withdrawal / Iteration / Asynchrony / Failure 四类边角）刻画生命周期状态机；五条元理论定理——Preservation（保型）、Recovery exactness + Terminal recovery（时间可组合）、Ordering + Resolution coherence（空间可组合）、Progress（必达 quiescent）、Confluence（quiescent 态由最终配置唯一决定）——把「局部可逆 + 局部响应式」推广到任意交错的组件系统，可组合性至此成为**结构性保证**，并许可「把动态系统当静态装配来推理」。
 
-**第五、六步——落地与验证。** Cordis 是「Spatiotemporal Composability的 meta-framework」，三层架构（core library / component loader / 应用框架）把理论符号几乎 1:1 映射到 `ctx.*`/`fiber.*`（Table 2），HMR 因此免除开发者手写 acceptance boundary；Koishi（4000+ 插件、四年生产、web console 是第二个独立 Cordis 应用）作 existence-and-adoption 论证。
+**第五、六步——落地与验证。** Cordis 是「Spatiotemporal Composability 的 meta-framework」，三层架构（core library / component loader / 应用框架）把理论符号几乎 1:1 映射到 `ctx.*`/`fiber.*`（Table 2），HMR 因此免除开发者手写 acceptance boundary；Koishi（4000+ 插件、四年生产、web console 是第二个独立 Cordis 应用）作 existence-and-adoption 论证。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -156,7 +156,7 @@ flowchart TB
 
 **coeffect 侧（§2.2）。** 对偶地，**coeffect system** 精化的是 context 而非类型，判断形如 $\Gamma\vdash t:T\,!\,\mathrm{coeffect}$——context 被标注上"计算向环境索取什么"（资源、权限、依赖的服务）。**comonadic coeffects**——Uustalu & Vene 首倡用共单子 $(D,\varepsilon,\delta)$ 结构化 context 依赖（$\varepsilon:D(A)\to A$ 取当前值、$\delta:D(A)\to D(D(A))$ 复制 context 供嵌套访问；Environment 共单子 $D(X)=E\times X$ 建模对固定环境的依赖、Stream 共单子 $D(X)=\mathbb N\to X$ 建模对时序数据的依赖），Petricek 在此之上把 coeffect 提为"context 依赖的统一静态分析"。**graded coeffects**——用预序半环（semiring，像自然数那样有加法与乘法、但不要求有减法/逆元的代数结构）$\mathcal S=(S,\le,+,\times,0,1)$ 作 coeffect 代数，为每个变量绑定标注用量（0 未用、1 线性、$n$ 有界、$\infty$ 无限制），$\times$ 顺序复合、$+$ 并行复合，支撑资源追踪/敏感度分析/信息流控制；Gaboardi 把它与 graded effects 统一。
 
-**对偶关系与"下沉"动机（§2.3）。** effect 描述"计算如何改环境"、coeffect 描述"环境如何约束计算"，恰对应动态可组合的两维：**temporal** 要 stateful effect 可逆（撤销一个变换 = 它得有逆元），**spatial** 要组件间依赖被声明并响应式管理（正是 coeffect 所捕获，管理 = 对着环境所供逐一解析）。但**经典系统都是静态工具**：effect 在词法固定作用域内追踪、由编译期 handler 讨清；coeffect 标注对着执行前定死的 context 校验。动态组合要求这些保证对"运行时才到/离场、且 context 持续演化"的组件成立——部署后加载的插件没有词法作用域可界定、运行时配置涌现的依赖没有编译期 context 可预知。**由此的视角转变**（也是全文的论文命题）：与其给静态类型系统加更多注解，不如**把 effect/coeffect 的概念结构 reify 成运行时可直接操作的类型**，在运行时动态地建立它们静态提供的保证——这正是 §3 把 typing context 变成 context type、把 effect 变成"变换 + 逆元"、把 coeffect 变成"携依赖信息的类型"的出发点。
+**对偶关系与"下沉"动机（§2.3）。** effect 描述"计算如何改环境"、coeffect 描述"环境如何约束计算"，恰对应动态可组合的两维：**temporal** 要 stateful effect 可逆（撤销一个变换 = 它得有逆元），**spatial** 要组件间依赖被声明并响应式管理（正是 coeffect 所捕获，管理 = 对着环境所供逐一解析）。但**经典系统都是静态工具**：effect 在词法固定作用域内追踪、由编译期 handler 讨清；coeffect 标注对着执行前定死的 context 校验。动态组合要求这些保证对"运行时才到/离场、且 context 持续演化"的组件成立——部署后加载的插件没有词法作用域可界定、运行时配置涌现的依赖没有编译期 context 可预知。**由此的视角转变**（也是全文的论文命题）：与其给静态类型系统加更多注解，不如**把 effect/coeffect 的概念结构 reify 成运行时可直接操作的类型**（reify 即"物化"：把原本只活在类型层的抽象概念，做成运行时能直接拿在手里读写的数据结构），在运行时动态地建立它们静态提供的保证——这正是 §3 把 typing context 变成 context type、把 effect 变成"变换 + 逆元"、把 coeffect 变成"携依赖信息的类型"的出发点。
 
 **effect 三条发展线（§2.1）一览**（判断形如 $\Gamma\vdash t:T\,!\,\mathrm{effect}$，源头 Lucassen & Gifford 的 kinded 类型系统）：
 
@@ -651,7 +651,7 @@ $$\sigma_\gamma:=\bigcup\{\sigma_m\mid m\in\mathrm{dom}(F_\gamma),\ \theta_m=\ma
 
 $$\mathrm{target}_n(\gamma):=\begin{cases}\bot&\tau_n\vee\neg(\gamma\vDash d_n)\\ (k\in d_n)\mapsto\mathrm{provider}_k(\gamma)&\text{otherwise}\end{cases}$$
 
-即：被退休、或依赖未满足 ⇒ 目标为 $\bot$（不该跑）；否则把每个声明键映到其 provider。状态**quiescent（quiet）** 当每个 fiber 都到达其 target view（$\mathsf{Inactive}$ 者 $\mathrm{target}=\bot$、$\mathsf{Active}(-,\omega)$ 者 $\mathrm{target}=\omega$）。生命周期由 committed view $\omega$ 与 target view 的**比较**驱动。记 provider 而非值，是为让"另一个 fiber 提供相等的值"不被误判为无变化。
+即：被退休、或依赖未满足 ⇒ 目标为 $\bot$（不该跑）；否则把每个声明键映到其 provider。状态**quiescent（quiet，系统已静息、没有任何 fiber 还需要转移）** 当每个 fiber 都到达其 target view（$\mathsf{Inactive}$ 者 $\mathrm{target}=\bot$、$\mathsf{Active}(-,\omega)$ 者 $\mathrm{target}=\omega$）。生命周期由 committed view $\omega$ 与 target view 的**比较**驱动。记 provider 而非值，是为让"另一个 fiber 提供相等的值"不被误判为无变化。
 
 base calculus 假设每次转移**原子、即时、无误**，五条规则生成两个关系——**orchestration 规则**（前缀 O-，$\gamma\Rightarrow\delta$，orchestrator 可执行的动作，前提说何时合法而非何时发生）与 **lifecycle 规则**（前缀 L-，$\gamma\longrightarrow\delta$，前提一旦成立系统就自发执行）：
 
@@ -682,7 +682,7 @@ $$\Theta_\Gamma:=\mathsf{Inactive}(\zeta)\mid\mathsf{Reloading}(i,g,\omega)\mid\
 
 其中 $i:\mathfrak E^{iter*}_\Gamma$ 是剩余 effect iterator、$g$ 是迄今 accumulator、$\omega$ 是 committed view、$\zeta:\{\bot\}\cup\Xi$ 是 outcome（$\bot$ 或错误）。fiber **installed** = 处于三个带 accumulator 与 committed view 的态之一；**failed** = 携错误 outcome。$\sigma_\gamma$ 仍只对 $\mathsf{Active}$ fiber 取并——转移进行中的 fiber 通过它持有的 $\omega$ 读 coeffect、自己不提供任何键。Figure 2（上）画出这个生命周期，其 10 条规则即 Table 1（上），下面逐类讲语义（这就是 §4.4 所称"§4.3 供给的十条规则"）。
 
-**① Withdrawal（撤离，§4.3.1）—— guard 延迟 provider 撤离直到 dependent 走完。** §3.2 要求"依赖先于依赖者激活、依赖在依赖者停用后才撤回"。前半在 base calculus 已成立（激活要 $\gamma\vDash d_n$）；后半是硬骨头：一个组件因 provider 要走而被拆时，正跑着自己的 teardown，而 teardown 可能**还要用那个正被撤走的 coeffect**（如连接池归还连接）。base 的 L-Unload 把"移除 provision"与"跑逆元"揉在一步，中间没有区间容纳消费者 teardown。§4.3.1 把它拆成两步并加 guard——**relied（Def.50）**：$n$ 被依赖当某个别的 installed fiber 的 committed view 把某键解析到 $n$。两条规则：**L-Leave** 把 $\mathsf{Active}(g,\omega)$（且 target≠ω）转 $\mathsf{Unloading}(g,\omega,\bot)$——只记"决定停用"而不动手，于是 $n$ 立刻停止提供 coeffect（离开 $\sigma_\gamma$）但保留自己与他人的 committed view；**L-Unload** 在 $\neg\mathrm{relied}_n(\gamma)$（即 **guard** 释放）时施加 accumulator、丢 committed view、转 $\mathsf{Inactive}(\zeta)$。它是全演算里**唯一施加 accumulator 的规则**。可见性半边由 committed view 承载、排序半边由 guard 承载（$\neg$relied 把 $k$ 的撤回压到"每个把它解析到 $n$ 的消费者都走了"之后）。guard 不死锁的原因：L-Leave 一旦标记 $n$，其表就离开 $\sigma_\gamma$，没有 target view 再命名 $n$，所有对 $n$ 提交过的消费者也都在离场路上（Thm.66 保证 guard 终会释放）。
+**① Withdrawal（撤离，§4.3.1）—— guard 延迟 provider 撤离直到 dependent 走完。** §3.2 要求"依赖先于依赖者激活、依赖在依赖者停用后才撤回"。前半在 base calculus 已成立（激活要 $\gamma\vDash d_n$）；后半是硬骨头：一个组件因 provider 要走而被拆时，正跑着自己的 teardown，而 teardown 可能**还要用那个正被撤走的 coeffect**（如连接池归还连接）。base 的 L-Unload 把"移除 provision"与"跑逆元"揉在一步，中间没有区间容纳消费者 teardown。§4.3.1 把它拆成两步并加 guard——**relied（Def.50）**：$n$ 被依赖当某个别的 installed fiber 的 committed view 把某键解析到 $n$。两条规则：**L-Leave** 把 $\mathsf{Active}(g,\omega)$（且 target≠ω）转 $\mathsf{Unloading}(g,\omega,\bot)$——只记"决定停用"而不动手，于是 $n$ 立刻停止提供 coeffect（离开 $\sigma_\gamma$）但保留自己与他人的 committed view；**L-Unload** 在 $\neg\mathrm{relied}_n(\gamma)$（即 **guard** 释放）时施加 accumulator、丢 committed view、转 $\mathsf{Inactive}(\zeta)$。它是全演算里**唯一施加 accumulator 的规则**。这半条要求分两块落实：可见性这一块由 committed view 保证（$k$ 在 dependent teardown 期间仍读得到），排序这一块由 guard 保证（$\neg$relied 把 $k$ 的撤回压到"每个把它解析到 $n$ 的消费者都走了"之后）。guard 不死锁的原因：L-Leave 一旦标记 $n$，其表就离开 $\sigma_\gamma$，没有 target view 再命名 $n$，所有对 $n$ 提交过的消费者也都在离场路上（Thm.66 保证 guard 终会释放）。
 
 **② Iteration（迭代，§4.3.2）—— reified delimited continuation + LIFO 累积。** 一次激活可能顺序执行多个 effect，停用要能逐一恢复。用 **effect iterator**（Def.51）建模，每次迭代 yield "新 context + 逆元 + 续延"：
 
@@ -894,7 +894,7 @@ L-Unload ───────────────────────�
 <tbody>
 <tr><td>
 
-Cordis 是**Spatiotemporal Composability的 meta-framework**：不针对具体领域（不像 web routing 路由、ORM（Object-Relational Mapping，对象关系映射）、UI（user interface，用户界面）那样解决某个具体问题），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
+Cordis 是**Spatiotemporal Composability 的 meta-framework**：不针对具体领域（不像 web routing 路由、ORM（Object-Relational Mapping，对象关系映射）、UI（user interface，用户界面）那样解决某个具体问题），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
 
 **core library（§5.1）**：Table 2 给出理论构件到运行时的对应（转写见本报告 §5.2）。`ctx` 即一等 context（$\Gamma_\infty$），`ctx.effect(callback)` 实现 $\mathrm{effect}_\Gamma$，回调返回/yield 逆元；`ctx.get/set/isolate/intercept` 对应 coeffect 操作；符号键 `ctx[@@store]/[@@isolate]/[@@intercept]` 对应 $\Sigma/\Sigma^{iso}/\Sigma^{inter}$。**Algorithm 1（Effect tracking）** 展示 `ctx.effect` 的构造：迭代执行回调、把每步 yield 的逆元以 $f\circ g$ 方式组进 disposer，对应 §4.3.2 的 L-Begin/L-Iter/L-Finish 迭代循环。component lifecycle（§5.1.3）用 LOADING/FAILED 等状态实现 §4 的生命周期机。
 
@@ -917,7 +917,7 @@ Table 2 的逐行对应是本文「可落地」主张的核心证据——理论
 
 > **深化 · §5.1 core library 四子层与 §5.2 loader 两机制**
 
-Cordis 定位是**Spatiotemporal Composability的 meta-framework**：不像 web routing/ORM/UI 那样针对具体领域，唯一职责是供通用动态组合语义。三层架构：
+Cordis 定位是**Spatiotemporal Composability 的 meta-framework**：不像 web routing/ORM/UI 那样针对具体领域，唯一职责是供通用动态组合语义。三层架构：
 
 | 层 | 职责 | 对应本报告 |
 | --- | --- | --- |
@@ -1954,7 +1954,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | C1 | 可逆 effect 确立 local temporal composability | §1.2、§2.3.1 | §1.3 贡献 1、§3.1 | ✅ 一致 | 保留 |
 | C2 | 响应式 coeffect 确立 local spatial composability | §1.2、§2.3.2 | §1.3 贡献 2、§3.2 | ✅ 一致 | 保留 |
 | C3 | observational equivalence 供 effect 以 independence | §1.2、§2.3.3 | §1.3 贡献 3、§3.3.2 Thm.40 | ✅ 一致 | 保留 |
-| C4 | 元理论把Spatiotemporal Composability从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
+| C4 | 元理论把Spatiotemporal Composability 从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
 | C5 | Koishi 是 observational、existence-and-adoption 论证，非受控对比 | §2.5、§3.5.1 | §5.3（原文明言） | ✅ 一致 | 保留 |
 | C6 | HMR 无需开发者标注 acceptance boundary | §2.4、§四 A.2 | §5.2.2 | ✅ 一致 | 保留 |
 | C7 | in-memory 状态默认不跨 reload 存活 | §2.4、§2.6、§3.5.1 质疑③ | §7.3（"does not survive a reload unless…"） | ✅ 一致 | 保留 |

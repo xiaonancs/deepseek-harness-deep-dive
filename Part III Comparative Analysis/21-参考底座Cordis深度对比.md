@@ -97,7 +97,7 @@ flowchart LR
 
 - **生命周期硬化**(第 6 条):在 `cordis/src/fiber.ts` 关掉三处"重入卸载"的缝隙——effect 的持有者包装在 setup 跑之前就登记好、`UNLOADING` 期间拒绝创建新 effect(而 `PENDING`/`LOADING` 期仍合法)、子 fiber 在 `internal/plugin` 发布**之前**就注册父级持有的拔线 `[verified]`(`vendor/README.md:38`;对应 `fiber.ts:265`、`:302`、`:311-316`)。这些是并发卸载场景里最容易漏资源的地方。
 - **事务化的 Loader/Include 配置对账**(第 8 条):改配置时"先导入新的、再销毁旧的",候选应用失败就回滚到旧插件/旧配置,并在生命周期结算后**重新检查**那些卡在依赖门上的 fiber `[verified]`(`vendor/README.md:40`)。这让"改一行配置"从"可能改坏了也不知道"变成"要么整体成功、要么整体回退"。
-- **HMR 精确监听 + 防死锁**(第 9、12 条):`registerConfig()` 只精确监听那一个配置绝对路径;主监听器加 `ignoreInitial:true`,免得启动初扫把 boot 刚消费过的文件又当成新增,进而在初次应用中途触发重载、最终把 HMR 卸载和排队重载卡成死锁(那个 bug 会以退出码 13 且无诊断信息的方式发作)`[verified]`(`vendor/README.md:41,44`)。
+- **HMR 精确监听 + 防死锁**(第 9、12 条):`registerConfig()` 只精确监听那一个配置绝对路径;主监听器加 `ignoreInitial:true`,免得启动时的首次扫描把 boot 刚消费过的文件又当成新增,进而在初次应用中途触发重载、最终把 HMR 卸载和排队重载卡成死锁(那个 bug 会以退出码 13 且无诊断信息的方式发作)`[verified]`(`vendor/README.md:41,44`)。
 - **回并上游的惰性配置解析**(第 15 条):移植上游 PR(Pull Request,拉取请求——向别人仓库提交改动的请求)[cordiverse/cordis#41],保留 fiber 的**原始**配置,只有等声明的依赖激活后才经 `internal/config` 解析 `[verified]`(`vendor/README.md:47`)。这解决了"配置里引用了还没就绪的服务就会解析失败"的顺序难题。
 - **Node 原生 TS 兼容**(第 4、10 条):显式标注被擦除的 import,免得 Node 的原生 TypeScript 转换把类型当成运行时导出 `[verified]`(`vendor/README.md:36,42`)。
 - **JSDoc 上游化**(第 7 类,即第 7 条 modification):给公开成员补齐 `@param`/`@returns` 与契约文档,因为官网 API 生成器会渲染它们、且对无文档成员**硬报错** `[verified]`(`vendor/README.md:39`)。

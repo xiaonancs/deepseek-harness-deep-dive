@@ -94,7 +94,7 @@ sequenceDiagram
 它身上挂着两块 Proxy 逻辑，务必分清：
 
 - **Context 级 handler**（`ReflectService.handler`，`reflect.ts:62-133`）：就是第一节里包住 `ctx` 的那层。`get` 拦截 `ctx.<name>`——特殊属性（symbol、`prototype`/`then`、数字串、`_` 开头，见 `isSpecialProperty` `reflect.ts:33-38）直接透传；否则先查 `accessor`，再沿 **fiber 链**向上走 `fiber.store?.[prop]` 找服务实现（`reflect.ts:79-93`）。找不到、且该名字在 `fiber.inject` 里被声明为依赖，就抛 `cannot get required service "x" in inactive context`（`reflect.ts:86-89`）；纯粹没 inject 过，则抛 `cannot get property "x" without inject`（`reflect.ts:71`）。**这就是那句著名报错的出处**。`set` 同理，未经 `provide` 声明的写入会被拒（`reflect.ts:100-124`）。
-- **Value 级 traceable**（`getTraceable`/`createTraceable`，在 **utils.ts**）：这是与 `utils.ts` 的 Proxy 的关系所在。当你从一个 ctx 上取出某个带 `tracker` 的值（如一个 service），`getTraceable` 会再包一层代理（`utils.ts:110-118、157-212`），把访问归属到"是哪个 ctx 取的"。其中 **caller-context** 由 `caller = ctx[symbols.shadow] ?? ctx` 决定（`utils.ts:158`），**shadow** 则是"影子 ctx"——`createShadow`（`utils.ts:141-146`）在方法调用时把 `this` 换成携带调用者身份的影子 ctx，从而让服务内部也能知道"是谁在调我"。`Context.extend` 里对 `symbols.shadow` 的透传（`context.ts:56-62`）就是配合这套机制。
+- **Value 级 traceable**（`getTraceable`/`createTraceable`，在 **utils.ts**）：这正是 `utils.ts` 那层 Proxy 的用处所在——它是 ctx 两层代理里的第二层。当你从一个 ctx 上取出某个带 `tracker` 的值（如一个 service），`getTraceable` 会再包一层代理（`utils.ts:110-118、157-212`），把访问归属到"是哪个 ctx 取的"。其中 **caller-context** 由 `caller = ctx[symbols.shadow] ?? ctx` 决定（`utils.ts:158`），**shadow** 则是"影子 ctx"——`createShadow`（`utils.ts:141-146`）在方法调用时把 `this` 换成携带调用者身份的影子 ctx，从而让服务内部也能知道"是谁在调我"。`Context.extend` 里对 `symbols.shadow` 的透传（`context.ts:56-62`）就是配合这套机制。
 
 一句话概括这两层：**handler 管"按名字找到服务"，traceable 管"记住是谁找的"**。前者实现容器语义，后者实现调用溯源与作用域正确性。
 

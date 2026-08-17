@@ -18,7 +18,7 @@ dsh 的架构自白只有一句话，写在根 `AGENTS.md` 开头和 `docs/archi
 2. **生命周期与副作用回滚**：agent 运行时要动态挂载/卸载能力（子 agent、临时工具、热重载的插件）。一个插件在运行期注册了监听器、定时器、服务、文件监视，卸载时若不能干净地全部撤销，就会泄漏、串扰、状态残留。打个比方：一个访客进屋开了灯、开了空调、还接了根网线，走的时候如果这些没人负责一一关掉，屋子就会越用越乱。
 3. **依赖顺序**：插件 A 需要 `ctx.tools` 就绪才能注册工具。手工编排 boot 顺序（谁先启动、谁后启动）既脆弱又不可组合——加一个新插件就得重新想一遍它该排在哪。
 
-Cordis 对这三点分别给出了"上下文即服务仓库""注册即可回滚 effect""按服务依赖声明 inject"的答案。这也是《社区认知地图》里被反复标记为"本项目最有研究味的部分"的那套Spatiotemporal Composability范式（详细形式化留到第 03 章）`[claimed]`（`全网调研-社区认知地图.md` B 节）。
+Cordis 对这三点分别给出了"上下文即服务仓库""注册即可回滚 effect""按服务依赖声明 inject"的答案。这也是《社区认知地图》里被反复标记为"本项目最有研究味的部分"的那套 Spatiotemporal Composability 范式（详细形式化留到第 03 章）`[claimed]`（`全网调研-社区认知地图.md` B 节）。
 
 ## 三、解决思路与方案
 
@@ -191,7 +191,7 @@ flowchart LR
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TD
-  Paper["论文: Spatiotemporal Composability范式<br/>(北大 × DeepSeek, Tianyi Cui 共同作者) [claimed]"]
+  Paper["论文: Spatiotemporal Composability 范式<br/>(北大 × DeepSeek, Tianyi Cui 共同作者) [claimed]"]
   Koishi["Koishi: 聊天机器人框架生态"]
   Cordis["Cordis: 通用 TS 微内核插件框架<br/>(@shigma 主导, ~537/550 commits) [claimed]"]
   DSH["DeepSeek Harness (dsh): agent 产品"]
@@ -207,7 +207,7 @@ flowchart TD
 
 </div>
 
-关于三者关系与血缘的更细追溯，可循以下交叉引用：横向的框架对比见 [Part III 第 21 章《参考底座 Cordis 深度对比》](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)；对 Cordis 本身的系统调研（尤其 Koishi / Cordis / dsh 三者关系）见 [Part V《Cordis 深度调研》第 29 章](../Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md)；支撑范式的论文全解见 [Part IV《Spatiotemporal Composability论文全解》](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)。
+关于三者关系与血缘的更细追溯，可循以下交叉引用：横向的框架对比见 [Part III 第 21 章《参考底座 Cordis 深度对比》](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)；对 Cordis 本身的系统调研（尤其 Koishi / Cordis / dsh 三者关系）见 [Part V《Cordis 深度调研》第 29 章](../Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md)；支撑范式的论文全解见 [Part IV《Spatiotemporal Composability 论文全解》](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)。
 
 ## 六、竞品/横向对比
 

@@ -151,7 +151,7 @@ stateDiagram-v2
 
 ### LlmRuntime.stream 的错误归一化
 
-前面那两条不同的错误路径，最终都在 `LlmRuntime` 这里汇成一条。`adapterStream`（`index.ts:843`）把**适配器选路、dispatch、迭代器构造、迭代**这几步里冒出的抛出，统一转成一个终止的 finish chunk（`adapterFailureChunk`，`index.ts:931`）——如果 caller 已经主动 abort、或错误 code 是 `ABORTED`，就记成 `aborted`，否则记成 `error`。换句话说，从消费者的视角看，即便直连适配器在底层"抛"了异常，最终露到面前的仍是一个规规矩矩的终止 finish，不用为哪家适配器写两套接错误的代码。而中间件、嵌套调用、清理逻辑与下游消费者本身的失败，则仍然保持抛出（`index.ts` `stream()` 的 JSDoc 对这条边界有明确划分）。`normalizeLlmFailure`（`adapter-failure.ts:16`）负责把任意抛出的值"脱水"成一个可序列化、provider 中立的 `LlmFailure`；它只信任 harness 自家的 error code，绝不把第三方 SDK 的 code 直接当成本方的分类标准。
+前面那两条不同的错误路径，最终都在 `LlmRuntime` 这里汇成一条。`adapterStream`（`index.ts:843`）把**适配器选路、dispatch、迭代器构造、迭代**这几步里抛出的错误，统一转成一个终止的 finish chunk（`adapterFailureChunk`，`index.ts:931`）——如果 caller 已经主动 abort、或错误 code 是 `ABORTED`，就记成 `aborted`，否则记成 `error`。换句话说，从消费者的视角看，即便直连适配器在底层"抛"了异常，最终露到面前的仍是一个规规矩矩的终止 finish，不用为哪家适配器写两套接错误的代码。而中间件、嵌套调用、清理逻辑与下游消费者本身的失败，则仍然保持抛出（`index.ts` `stream()` 的 JSDoc 对这条边界有明确划分）。`normalizeLlmFailure`（`adapter-failure.ts:16`）负责把任意抛出的值"脱水"成一个可序列化、provider 中立的 `LlmFailure`；它只信任 harness 自家的 error code，绝不把第三方 SDK 的 code 直接当成本方的分类标准。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 

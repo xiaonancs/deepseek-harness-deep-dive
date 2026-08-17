@@ -135,7 +135,7 @@ flowchart TB
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart TB
-  PAPER["论文<br/>Spatiotemporal Composability范式<br/>形式化 what"]
+  PAPER["论文<br/>Spatiotemporal Composability 范式<br/>形式化 what"]
   CORDIS["Cordis<br/>范式的实现<br/>how"]
   DSH["dsh<br/>范式的应用<br/>self-evolving harness"]
   PAPER -- "形式化其插件模型<br/>§4.3 Koishi plugin = component" --> CORDIS

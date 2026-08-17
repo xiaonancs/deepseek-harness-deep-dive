@@ -30,13 +30,6 @@
 
 策略插件监听这三个事件（`fs/write-intent`、`fs/edit-intent`、`fs/observed`，声明于 `packages/fs/fs/src/index.ts:58/66/76`），在自己的 `WeakMap` 里维护一本账——"每个 session 观察过哪些文件的哪个版本"，据此把写决策映射为 `createIfAbsent`（未见/确认缺失）或 `replaceIfVersion`（已见）。而 provider 那头只做最原始的原子检查：no-clobber（目标已存在就不覆盖）或 CAS（compare-and-swap，版本对得上才写）（`packages/fs/fs-observation-policy/src/index.ts:65-88`）。这样一来，"要不要守、怎么守"全在策略插件里，provider 只管"照令执行"。
 
-> **ratify-note · fs 守卫为何是"事件 + 可选 guard"而非"服务方法"**
-> - 候选解释：A 把守卫做成 `FileSystem` 上的必选方法/参数；B（现状）守卫作为**可选** guard 下放到 provider，策略通过独立的 `fs/*` 事件闸决定，缺省 provider 不带守卫。
-> - 各自利弊：A 优在调用方无法绕过守卫，缺在把"策略"焊进了每个 backend，远程/沙箱 backend 都得重复实现，且策略无法整体卸载；B 优在移除策略插件不破坏工具（工具只发事件、拿 `undefined` 就是无条件写，`docs/subsystems/filesystem.md`），策略与 backend 正交、可被 HMR 完整回滚（`ctx.effect` 释放 `WeakMap`，`packages/fs/fs-observation-policy/src/index.ts:109-114`），缺在"单槽先到先得"是部署约定而非强制不变量。
-> - 选定 & 理由：选 B。它把"读改写机制"与"读前置策略"解耦，符合能力接缝"一次 provider 替换改变整个产品、但策略不动"的目标。
-> - 证据等级：[verified]（`packages/fs/tool-fs/src/write.ts:111-122`、`packages/fs/fs-observation-policy/src/index.ts:65-129`）。
-> - 残余风险 / pre-mortem：若半年后被证伪，最可能因"单槽先到先得非强制"导致多插件抢占该 waterfall 槽产生不可预期决策。
-
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
 ```mermaid
@@ -162,28 +155,16 @@ sequenceDiagram
 
 理解了这个坐标，沙箱迁移（第 12 章）就顺理成章了——它正是在这一层发生的：把本地 backend 换成 `fs-e2b`/`subprocess-e2b`，整个执行世界一起搬进 E2B 沙箱，而 `ctx.fs`/`ctx.lsp` 的签名、`lsp` 工具的 schema、`run_code` 的绑定形态统统不变。上层完全无感。`fs-sandbox` 则是另一种更轻的迁移：`SandboxedFileSystem extends LocalFileSystem`（直接继承本地实现），只在两个 mutation（写、改）上加一道"先规范化路径、再检查是否在允许范围内"的**每调用策略栅栏**（越界就报 `FS_SANDBOX_DENIED`），读操作一律放行（`packages/fs/fs-sandbox/src/index.ts` 模块注释）。
 
-> **ratify-note · Code Mode/fs-sandbox 的 isolation 是不是"安全边界"**
-> - 候选解释：A 把 worker 线程 / 进程隔离 / in-process 栅栏当作安全沙箱宣称；B（源码口径）明确"这是 containment，不是安全边界"，模型代码拥有 bash 等价信任。
-> - 各自利弊：A 优在营销上更强，缺在会诱导部署者把不可信代码托付给一个无法兑现的边界；B 优在诚实标注"隔离仅诊断标签、非安全声明"（`code-runtime/src/index.ts` 的 `isolation` 描述、worker-thread 模块注释），把"不可信代码的内核级隔离"留给 `ctx.shell` 的 `dsh-bash-sandbox`，缺在读文档者需理解这层区分。
-> - 选定 & 理由：选 B，与源码一致。`fs-sandbox` 的注释直言其栅栏"是可信代码里对模型控制路径的策略检查，不是内核边界"，并主动接受 TOCTOU 残余风险。
-> - 证据等级：[verified]（`packages/fs/fs-sandbox/src/index.ts` 模块注释；`packages/code-runtime/code-runtime-worker-thread/src/index.ts:1-7`）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因部署者误把 `isolation:'worker-thread'` 当安全承诺、在其中运行真正不可信第三方代码。
+要强调的是：无论是 worker 线程、进程隔离还是 `fs-sandbox` 这道 in-process 栅栏，源码口径都明说"这是 containment，不是安全边界"——模型代码拥有与 bash 等价的信任，`isolation` 字段只是诊断标签而非安全声明。`fs-sandbox` 的注释更直言其栅栏"是可信代码里对模型控制路径的策略检查，不是内核边界"，并主动接受 TOCTOU 残余风险；真正"不可信代码的内核级隔离"被留给 `ctx.shell` 的 `dsh-bash-sandbox`（`packages/fs/fs-sandbox/src/index.ts` 模块注释、`packages/code-runtime/code-runtime-worker-thread/src/index.ts:1-7` `[verified]`）。读文档者只要守住这层区分，就不会误把 `isolation:'worker-thread'` 当成运行不可信第三方代码的安全承诺。
 
-**横向对比**：
-
-> **ratify-note · 通用 stdio LSP + 四操作闭合联 vs 竞品做法**
-> - 候选解释：A（dsh 现状）只暴露 4 个语义操作的闭合联、通用 stdio 宿主按扩展名配置任意语言、不泄漏协议类型；B 直接暴露一个通用 LSP/JSON-RPC 透传，让工具自行发协议方法。
-> - 各自利弊：A 优在增删操作是"跨接缝编译强制"的一处改动（闭合 union + `assertNever`，`docs/subsystems/lsp.md`），工具与 provider 都不碰协议；缺在 symbols/call-hierarchy 这类需不同 schema 的能力被排除在外。B 优在灵活，缺在把 LSP 协议噪声灌进模型工具面、且难做结果归一化与结果上限。
-> - 选定 & 理由：选 A。对 agent 而言"定义/引用/实现/悬浮"四类精准导航已覆盖主要用途，闭合联换来跨层类型安全与稳定的模型契约。Claude Code/Codex 等同类多以文本搜索为主、语义导航非一等公民 [claimed]，dsh 把它做成可选一等能力但克制其表面积。
-> - 证据等级：操作闭合与通用宿主 [verified]（`packages/lsp/lsp/src/types.ts`、`lsp-stdio/src/index.ts:82-107`）；竞品对比 [claimed]（社区认知，无逐条源码核对）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因真实使用暴露出对 symbols/rename 的强需求，迫使接缝突破四操作闭合。
+**横向对比**：在语义导航这条线上，Claude Code、Codex 等同类 harness 多以文本搜索为主、语义导航并非一等公民 `[claimed]`；dsh 则把它做成一项可选的一等能力，却刻意克制表面积——只暴露定义/引用/实现/悬浮四类语义操作的闭合联，通用 stdio 宿主按扩展名配置任意语言、绝不把 LSP 协议类型泄漏进工具与 provider。好处是增删操作变成一处"跨接缝编译强制"的改动（闭合 union + `assertNever`），工具与 provider 都不碰协议、还换来稳定的模型契约；代价是 symbols、call-hierarchy 这类需要不同 schema 的能力被挡在四操作之外（操作闭合与通用宿主 `[verified]`：`packages/lsp/lsp/src/types.ts`、`lsp-stdio/src/index.ts:82-107`；竞品对比 `[claimed]`）。
 
 ## 七、仍存在的问题与局限
 
 - **语言后端不全**：`ctx.codeRuntime.language` 声明了 `typescript`/`python` 两种，但目前只有 TypeScript 真的有已发布的 backend（`docs/subsystems/code-runtime.md` 服务节）。`run_code` 里 Python flavor 的文案都写好了，就等一个 provider 补上。
 - **fs 单槽约定非强制**：`fs/write-intent`/`fs/edit-intent` 是"先到先得"的单槽 waterfall，"策略插件来占这个槽"只是一条部署约定，而非接缝强制的规则；万一有多个插件同时监听，会怎样并未被接缝兜住（`packages/fs/fs/src/index.ts:58-66`）。
 - **LSP 源码替换的 TOCTOU**：`host.ts` 里留了个 `XXX(lsp-source-replacement)` 标记。TOCTOU（time-of-check to time-of-use，检查时与使用时之间被人动了手脚）在这里的含义是：如果在"规范容器检查"和"provider 打开文件流"这两步之间源码被替换，那么"稳定文件句柄身份"这件事就需要重新斟酌（`packages/lsp/lsp-stdio/src/host.ts:97`）。
-- **containment 非安全边界**（见上 ratify-note）：这是一个明摆着的设计取舍，不是缺陷；但部署者心里得清楚——它拦得住误操作，拦不住蓄意攻击。
+- **containment 非安全边界**（见第六节）：这是一个明摆着的设计取舍，不是缺陷；但部署者心里得清楚——它拦得住误操作，拦不住蓄意攻击。
 
 ## 小结与衔接
 

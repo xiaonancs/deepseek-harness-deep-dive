@@ -154,19 +154,9 @@ sequenceDiagram
 
 ## 六、承重判断
 
-> **ratify-note · 为什么用 symbol 隔离表 + Proxy 中介，而不是直接把服务当字段存**
-> - 候选解释：A 直接 `ctx.foo = service`（普通对象字段，最朴素基线）；B 现状——名字→symbol 的 isolate 表 + store 以 symbol 为键 + Proxy handler 解析。
-> - 各自利弊：A 优——零开销、易调试、无魔法；缺——无法做作用域隔离（`isolate` 同名不同物）、无法在"未就绪/inactive"时给出精确报错、无法把取值挂到 fiber 链上做热插拔，服务替换要手动改所有引用。B 优——同名可隔离、访问可溯源（caller/shadow）、缺服务时报错精确、与 fiber 生命周期天然联动；缺——两层 Proxy 带来理解与性能成本，栈里全是代理、`instanceof` 要特判（`service.ts:69-79`）。
-> - 选定 & 理由：源码选 B。对一个"改代码不重启、插件随时增删"的 harness 内核，作用域隔离与热插拔是硬需求，A 根本无法承载；Proxy 的复杂度是为这两项能力付的必要代价。
-> - 证据等级：[verified]（隔离表 `context.ts:10、65-69`；symbol 键 `reflect.ts:135、184`；两层 Proxy `context.ts:39` 与 `utils.ts:157-212`）。
-> - 残余风险 / pre-mortem：若半年后此判断被证伪，最可能因——实测发现绝大多数场景根本用不到 isolate，Proxy 的调试成本与性能损耗超过收益，社区转向更轻的显式容器。
+回头看这套"symbol 隔离表 + 两层 Proxy"的设计，它比"直接把服务当普通字段存"（`ctx.foo = service`）重得多，为什么值得？第一性的答案是：对一个"改代码不重启、插件随时增删"的内核，**作用域隔离与热插拔是硬需求**——直接存字段既做不到 `isolate` 的"同名不同物"，也无法在服务未就绪时给出精确报错、更没法把取值挂到 fiber 链上随生命周期联动，而这些恰是 symbol 键（隔离表 `context.ts:10、65-69`，symbol 键 `reflect.ts:135、184`）加两层 Proxy（`context.ts:39` 与 `utils.ts:157-212`）换来的能力；Proxy 带来的理解与性能成本（栈里全是代理、`instanceof` 要特判）是为这两项能力付的必要代价。[verified]
 
-> **ratify-note · 与 Claude Code / Codex 等 harness 的横向对比**
-> - 候选解释：A Cordis 的"Context 即依赖注入容器 + Proxy 稳定 key"；B 主流 agent harness 常见的"显式传参/模块单例/手写 DI 容器"。
-> - 各自利弊：A 优——服务解析与热插拔、作用域隔离统一在一层，插件写 `ctx.x` 即可；缺——机制重、学习曲线陡。B 优——直白、易读、无运行时魔法、启动快；缺——热插拔与作用域隔离要各自造轮子，跨模块共享状态易散乱。
-> - 选定 & 理由：不宣布孰优——两者目标不同。Cordis 服务于 Koishi 式"长期运行、插件生态、热重载"，DI 容器是刚需；多数 agent harness 是"一次性任务编排"，显式传参已够。dsh 选择 vendored Cordis，说明它要的是前一种能力。
-> - 证据等级：[inferred]（Cordis 机制 [verified] 见上；"主流 harness 如何做"属一般工程认知，无本仓源码直证，故整体判断标 inferred）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因——我对某竞品内部实现的假设有误，其实它也内建了等价的服务容器。
+放到横向视角，这也解释了 dsh 为何愿意把整个 Cordis vendored 进来：多数 agent harness 面向"一次性任务编排"，用显式传参或模块单例已经够；而 Cordis 这套"Context 即依赖注入容器 + Proxy 稳定 key"服务的是"长期运行、插件生态、热重载"的场景，DI 容器是刚需——两者目标不同、无所谓孰优，dsh 选择 Cordis 正说明它要的是后一种能力。[inferred]
 
 ---
 

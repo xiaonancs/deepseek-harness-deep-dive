@@ -57,12 +57,7 @@ flowchart TD
 
 "vendored"（源码内置）这个词值得先解释一句：它指的是不走 npm 安装，而是把某个依赖的源代码**原样搬进自己仓库**、连版本一起钉死，从此这份代码由你自己保管、自己负责。dsh 就是这么做的——它没有把 Cordis 当成普通 npm 依赖装进 `node_modules`，而是把 Cordis core 及其基础库（cosmokit、schemastery）以**源码**形式复制进 `vendor/`，共 9 个目录 `[verified]`（`vendor/README.md:13-23`，目录：cordis / cosmokit / schemastery / loader / include / group / timer / hmr / logger-console），pin 在 `cordis@4.0.0-rc.7`（commit `56b3d4f…`）`[verified]`（`vendor/README.md:17`）。
 
-> **ratify-note · 为何 vendored 而非 npm 依赖**
-> - 候选解释：A 直接 npm 依赖 `cordis@4.0.0-rc.6/7`（沿用现状/最省事的基线）；B 源码 vendored 进仓库、pin commit、维护本地修改日志。
-> - 各自利弊：A 优——零维护、自动获得上游更新、体积小；缺——core 当时是 release candidate，dsh 的 agent loop 正确性保证依赖 fiber 生命周期、effect 拆卸、waterfall 派发这些**框架内部行为**，一次 RC 版本跳变就可能在无本地修复路径的情况下打破它们 `[verified]`（`.agents/notes/…/2026-06-11-vendor-cordis-as-source.md:9,19`）。B 优——完全拥有框架层：可审计、可打补丁、被 pin 住；上游 RC 动不了它，框架 bug 可就地在树内修（该日志现已积累 18 条本地修改，其中第 6 条"fiber 生命周期加固"就地闭合了三个可重入拆卸缺口）`[verified]`（`vendor/README.md:30-50`，尤其条目 6）；缺——上游同步是手工的，需按 manifest 流程重放本地修改，维护成本上移。
-> - 选定 & 理由：选 B。第一性判断——当被依赖物尚在 RC、且你依赖它的**内部不变量**（而非稳定公共 API）时，"拥有"比"依赖"更能守住正确性边界；ADR 明确把 A 列为 rejected `[verified]`（同上 :17-20）。同时它只 vendored"内部行为要紧的框架层"，真正的第三方依赖（js-yaml、chokidar、@standard-schema/spec 等）仍留在 npm，边界克制 `[verified]`（`vendor/README.md:25`、ADR :20）。
-> - 证据等级：`[verified]`（ADR 决策与 alternatives + vendor manifest 均源码可证）。
-> - 残余风险 / pre-mortem：若半年后此判断被证伪，最可能因上游 Cordis 迭代过快、18 条本地修改与上游持续 diff 冲突，使"手工同步"成本超过"拥有"收益——届时应把已被上游采纳的修改（如条目 15 已回合并的 PR#41）逐条退役、缩小 diff 面。
+为什么要费这个劲、而不直接 npm 依赖？第一性的理由是：Cordis core 当时仍是 release candidate，而 dsh 的 agent loop 正确性依赖的是 fiber 生命周期、effect 拆卸、waterfall 派发这些**框架内部行为**（内部不变量）、而非稳定的公共 API——一次 RC 版本跳变就可能在无本地修复路径的情况下把它们打破。当你依赖的是被依赖物的内部不变量时，"拥有"比"依赖"更能守住正确性边界：vendored 让框架层可审计、可就地在树内打补丁（该本地修改日志现已积累 18 条，其中第 6 条"fiber 生命周期加固"就地闭合了三个可重入拆卸缺口）。ADR 明确把"直接 npm 依赖"列为 rejected，同时只 vendored"内部行为要紧的框架层"，真正的第三方依赖（js-yaml、chokidar、@standard-schema/spec 等）仍留在 npm，边界克制 `[verified]`（`.agents/notes/implemented/process/2026-06-11-vendor-cordis-as-source.md:9,17-20`；`vendor/README.md:25,30-50`）。
 
 ### rescope 到 @deepseek-ai/cordis
 
@@ -180,7 +175,7 @@ flowchart LR
 
 **底座关系：Cordis 在下，dsh 在上。** Cordis 本身是一套**通用**的 TypeScript 微内核插件框架，并不为 agent 而生——它是从聊天机器人框架 Koishi 的生态里抽象、独立出来的一层"插件怎么装卸组合"的底层机制，主要由作者 `@shigma` 推动（社区调研记其贡献占绝对多数，约 537/550 commits）`[claimed]`（`全网调研-社区认知地图.md` B 节）。dsh 把这套框架当**底座**：它以 vendored 源码方式收进 `vendor/`、pin 在 `cordis@4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`，并让每个 harness 包把它声明为 peerDependency `[verified]`（`vendor/README.md`，详见本章第三、四节）。也就是说，dsh 的每一颗插件都长在 Cordis 提供的那棵 `ctx` 树上。
 
-**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中已有一条即条目 15 被上游采纳、回合并为 Cordis 的 PR#41）`[verified]`（`vendor/README.md:30-50`）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节的 ratify-note）。
+**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中已有一条即条目 15 被上游采纳、回合并为 Cordis 的 PR#41）`[verified]`（`vendor/README.md:30-50`）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节）。
 
 **边界划分：Cordis 管"插件怎么装卸组合"，dsh 管"agent 怎么跑"。** 两者的职责可以干净地切开：
 
@@ -216,18 +211,11 @@ flowchart TD
 
 ## 六、竞品/横向对比
 
-同类 harness（Claude Code / Codex CLI / Pi 等）多把"可扩展性"实现为**扩展点回调 / 钩子（hooks）+ 配置**，扩展被宿主内核调用——好比宿主是主厨、扩展是它偶尔叫来帮忙的临时工，主厨这个角色本身换不掉；而 dsh 把宿主本身也化成插件，扩展与内核在同一棵 Cordis 树上平权，连"主厨"这一格都是可替换的插件。
-
-> **ratify-note · "一切皆插件"相对"内核+扩展点"孰优**
-> - 候选解释：A 传统"特权内核 + 扩展点/hook"（多数 harness 现状，也是 dsh 若不用 Cordis 的默认基线）；B dsh 的"无特权内核、连 loop 都是可替换插件"。
-> - 各自利弊：A 优——心智简单、内核可做强不变量、扩展面收敛、上手快；缺——内核成为不可替换的中心，"换模型接缝/换会话存储/换 loop"要动内核或穿 hook 参数。B 优——一次 provider 替换即可改变整个产品（如把 fs/subprocess provider 指向远程沙箱，Bash/PTY/LSP 一起迁移，无需 fork）`[verified]`（`docs/architecture.md:100-102`），扩展与内核同构、可热卸载回滚；缺——DI/跨插件依赖的实际收益社区存疑（HN 有"跨插件 DI 收益存疑"的声音），"一切皆插件"抬高了作者的心智门槛（要懂 inject 门控、effect 拆卸、waterfall 语义）`[claimed]`（`全网调研-社区认知地图.md` D 节）。
-> - 选定 & 理由：dsh 选 B，第一性动机可回溯到其"模型是灵魂、一切皆可替换"的产品命题——若 loop 本身不可替换，"可替换性"就有一个不可动的中心，命题即破。源码侧的"能力接缝三角色（Definition/Provider/Consumer）让一次 provider 替换改变整个产品"是 B 相对 A 的可验证差异点 `[verified]`（`docs/architecture.md:98-102`）。
-> - 证据等级：机制层 `[verified]`（architecture.md）；"孰优"的价值判断 `[inferred]`——源码只能证明 dsh 用 B 实现了什么，证明不了 B 在一切场景下优于 A。
-> - 残余风险 / pre-mortem：若被证伪，最可能因"无特权内核"的自由度在实践中主要被少数官方 bundle 用到，第三方极少真的替换 loop，则 B 的多数收益未被兑现，A 的简单性反而更划算。
+同类 harness（Claude Code / Codex CLI / Pi 等）多把"可扩展性"实现为**扩展点回调 / 钩子（hooks）+ 配置**，扩展被宿主内核调用——好比宿主是主厨、扩展是它偶尔叫来帮忙的临时工，主厨这个角色本身换不掉；而 dsh 把宿主本身也化成插件，扩展与内核在同一棵 Cordis 树上平权，连"主厨"这一格都是可替换的插件。传统方案里内核可做强不变量、上手快，但内核本身成了不可替换的中心，"换模型接缝/换会话存储/换 loop"都得动内核或穿 hook 参数；dsh 这条路的可验证差异点在能力接缝的三角色（Definition/Provider/Consumer）——一次 provider 替换即可改变整个产品，例如把 fs/subprocess provider 指向远程沙箱，Bash/PTY/LSP 就一起迁移、无需 fork `[verified]`（`docs/architecture.md:98-102`）。dsh 选这条路的第一性动机可回溯到其"模型是灵魂、一切皆可替换"的产品命题：若 loop 本身不可替换，"可替换性"就有一个不可动的中心，命题即破。不过这只是源码能证明的"差异"，不等于它在一切场景下都更优——社区就有"跨插件 DI 收益存疑""一切皆插件抬高了作者心智门槛"的声音`[claimed]`（`全网调研-社区认知地图.md` D 节）。
 
 ## 七、仍存在的问题与局限
 
-- **上游同步是手工的、且 diff 面在增长**。18 条本地修改要在每次 sync 时逐条重放或退役 `[verified]`（`vendor/README.md:52-60`、条目 1-18）。这是"拥有框架层"的直接代价，也是本章第一条 ratify-note 的核心残余风险。
+- **上游同步是手工的、且 diff 面在增长**。18 条本地修改要在每次 sync 时逐条重放或退役 `[verified]`（`vendor/README.md:52-60`、条目 1-18）。这是"拥有框架层"的直接代价，也是本章 vendored 取舍的核心残余风险。
 - **pin 在 RC**。`cordis@4.0.0-rc.7` 仍是 release candidate `[verified]`（`vendor/README.md:17`）；正式版的 API/行为变化届时需要一次有成本的迁移。
 - **心智门槛与"体积/供应链"质疑**。社区对 TS 选型、下载/构建体积、npm 供应链有质疑，记为已知局限，留待第 19 章展开 `[claimed]`（`全网调研-社区认知地图.md` D 节）。
 - **发布即发布框架层**。rescope 让 harness 发布连带发布 `@deepseek-ai/cordis*`，好处是消费者拿到一致的框架层，代价是这批"改了名的上游包"要由 DeepSeek 一直维护对齐 `[verified]`（`vendor/README.md:5`）。

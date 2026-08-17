@@ -31,7 +31,7 @@ dsh 把这两条直接翻译成了工程铁律。它的 Cordis primer 把整个�
 2. **依赖顺序问题**：LLM provider 依赖 credentials 服务，工具 Consumer 依赖 `ctx.tools`，subagent 依赖 `ctx.agents`。若靠手写 boot 顺序，任何一次插件增删都要重排启动序列——这就像每加一个新家电就得回去重画一遍全屋的通电顺序表，在数百个包（219 个 workspace 包）、可任意组合的 profile 下根本不可维护。
 3. **热替换问题**：开发时改一行插件代码要能立刻生效；运行时用户改 profile 补丁要能不重启就重新组装。这要求「卸旧 + 装新」是一个可靠的原子操作。
 
-传统插件系统往往只解决「加载」，把「卸载回滚」和「依赖响应」留给插件作者自觉——于是脆弱。Spatiotemporal Composability范式的价值，正是把这三件事变成**框架的内建不变量**而非作者的纪律。
+传统插件系统往往只解决「加载」，把「卸载回滚」和「依赖响应」留给插件作者自觉——于是脆弱。Spatiotemporal Composability范式的价值，正是把这三件事变成**框架的内建不变量**而非作者的纪律。这也正是它区别于"热重载插件系统"的地方——普通插件系统不敢把内核也做成插件，因为回滚不可靠；只有当卸载回滚可靠到近乎无损，dsh 才敢让连 agent loop 本身都是可替换插件（`@deepseek-ai/dsh-agent-loop` 是唯一具体 loop 实现，且"nothing outside it may depend on it"）`[verified]`（微内核 event-taxonomy 笔记）。
 
 ## 三、解决思路与方案
 
@@ -65,13 +65,6 @@ flowchart TD
 </div>
 
 > 图注：范式两轴 → Cordis 两套机制 → dsh 两条铁律 → 产品级后果。它证明了「时间/空间可组合性」不是抽象概念，而是逐层落到 `ctx.effect()` 与 `inject`/epoch 上的具体代码路径。
-
-> **ratify-note · 该范式是否真区别于普通插件系统**
-> - 候选解释：A =「它只是热重载 + 动态启停的插件系统，和 webpack HMR / OSGi 一类无本质区别」（HN 上 lxdlam 的观点，`[claimed]`）；B =「它的区别点在于把『可逆 effect』与『响应式 coeffect』做成了框架强制的不变量，而非作者自觉」。
-> - 各自利弊：A 优——描述了表层现象（确实能热重载）、门槛低易理解；A 缺——解释不了为什么 dsh 敢让**连 agent loop 本身**都是可替换插件（普通插件系统不会把内核也做成插件，因为回滚不可靠）。B 优——能解释源码里三条硬约束（`register()` 必返 disposer、load 由服务可用性而非顺序驱动、卸载反序解开）为何存在；B 缺——「形式化」的强度取决于论文，而论文内部证明本研究未逐行核实。
-> - 选定 & 理由：选 B。第一性依据：源码里没有一处「特权内核」——`@deepseek-ai/dsh-agent-loop` 是**唯一**具体 loop 实现且自身可换，「nothing outside it may depend on it」`[verified]`（微内核 event-taxonomy 笔记）。只有当卸载回滚可靠到近乎无损，才敢把内核降格为插件；这正是「可逆 effect」提供的保证，普通插件系统给不了。
-> - 证据等级：机制 `[verified]`（fiber.ts、tools/index.ts、event-taxonomy 笔记）；范式命名与形式化强度 `[claimed]`（论文，README.md:7 引用）。
-> - 残余风险 / pre-mortem：若半年后此判断被证伪，最可能因——论文的「完全回滚」在实现里其实有已知逃逸口（如 vendor 本地补丁 6 修补的三处「reentrant disposal gap」说明上游 effect 语义并非天然无洞），使「区别于普通插件系统」退化为「补丁补出来的区别」。
 
 ## 四、实现细节关键点
 
@@ -191,23 +184,13 @@ flowchart LR
 
 ## 六、竞品/横向对比
 
-> **ratify-note · dsh 的可组合性范式 vs 同类 harness 的插件/扩展机制**
-> - 候选解释：A =「Claude Code / Codex CLI 一类用 hooks + MCP + slash-command 做扩展，效果等价」；B =「dsh 把扩展统一到一个带可逆 effect 与响应式依赖的 DI 内核上，与前者是不同量级的可组合性」。
-> - 各自利弊：A 优——hooks/MCP 是被验证过的、跨厂商的扩展面，生态成熟、心智负担小；A 缺——hooks 通常是「在固定生命周期点插回调」，没有统一的卸载回滚与依赖响应，扩展点由宿主枚举而非任意插件自定义。B 优——扩展点即类型化事件、任何能力都能自定义并热插拔、卸载有框架级回滚保证（HN JonChesterfield 称 dsh 的严格工具 JSON schema 超过 Codex，`[claimed]`）；B 缺——把「一切」建在一个社区框架内核上，学习曲线陡，且内核 bug 半径覆盖全产品（vendor 大量本地补丁即代价）。
-> - 选定 & 理由：选 B 作为「区别点」的准确描述，但不主张 B 在**产品体验**上必然更优。第一性依据：dsh 的扩展粒度是「连 agent loop、模型适配器、会话日志都是可替换插件」，这在 hooks/MCP 模型里没有对应物；差异是**结构性**的，不是功能清单的多寡。
-> - 证据等级：dsh 侧 `[verified]`（event-taxonomy 笔记、AGENTS.md）；竞品机制与优劣对比 `[claimed]`（社区口径，详见《全网调研》D 节）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因——实践中绝大多数用户只需 hooks 级扩展，dsh 的深度可组合性成为「用不上的复杂度」，而 HN rco8786「一方 harness 未必胜第三方」的质疑正指向这点。
+同类 harness（Claude Code / Codex CLI 一类）多用 hooks + MCP + slash-command 做扩展：这是被验证过、跨厂商、心智负担小的成熟扩展面，但 hooks 通常只是「在固定生命周期点插回调」，扩展点由宿主枚举，缺少统一的卸载回滚与依赖响应。dsh 则把扩展统一到一个带可逆 effect 与响应式依赖的 DI 内核上——扩展点即类型化事件、任何能力都能自定义并热插拔、卸载有框架级回滚保证。二者的差异是**结构性**的、而非功能清单的多寡：dsh 的扩展粒度做到了「连 agent loop、模型适配器、会话日志都是可替换插件」，这在 hooks/MCP 模型里没有对应物 `[verified]`（event-taxonomy 笔记、AGENTS.md）。但这只是「区别点」的准确描述，并不主张它在**产品体验**上必然更优——绝大多数用户可能只需 hooks 级扩展，HN 上 rco8786「一方 harness 未必胜第三方」的质疑正指向这点 `[claimed]`（社区口径，详见《全网调研》D 节）。
 
 关于 Cordis 的血缘：其作者 @shigma 亦是知名聊天机器人框架 **Koishi** 的作者，Cordis 被普遍视为从 Koishi 抽象出的通用内核（共享插件市场/HMR/DI 的架构 DNA）`[inferred]`（未取得逐字一手表述，见《全网调研》B 节）。**一个顶级 AI 实验室把 agent harness 建在源自社区聊天机器人框架的 DI/插件内核上**，是本主题最被低估的事实。
 
 ## 七、仍存在的问题与局限
 
-> **ratify-note · 「完全回滚」在工程上是否真的完全**
-> - 候选解释：A =「effect 卸载即完全回滚，无残留」；B =「回滚在框架管理的资源上可靠，但存在已知逃逸口，靠约定与补丁兜底」。
-> - 各自利弊：A 优——是范式承诺、也是绝大多数场景的实际表现；A 缺——与源码事实不符。B 优——诚实反映实现：vendor 补丁 6 列举了「setup 期内启动的卸载」「异步 cleanup 的 owner 可见性」「UNLOADING 期拒绝新 effect」等三类需要专门修补的 reentrant gap；façade 刻意不给 `effect()` 也说明「任意资源都能被 Cordis 追踪」并不成立——包外资源必须作者手动包进 effect，漏包即漏。B 缺——削弱了范式的「优雅」叙事。
-> - 选定 & 理由：选 B。第一性依据：`ctx.effect()` 只能回滚**通过它注册**的东西；一个插件若直接 `setInterval` 而不包 effect，卸载就漏（tutorial 02 专门演示了「必须包进 effect」正因默认不追踪）。「完全回滚」是**对合规代码**的保证，不是对任意代码的物理保证。
-> - 证据等级：`[verified]`（vendor/README.md 补丁 6/8/9/12；tutorial 02:5-9；tool-cordis README Known Limitations）。
-> - 残余风险 / pre-mortem：若此判断过于悲观被证伪，最可能因——上游把这些补丁合并后，reentrant 语义变成框架天然属性，逃逸口收敛到仅剩「作者不用 effect 管资源」这一可静态检查的情形。
+需要诚实讲清一个边界：**「完全回滚」是对合规代码的保证，而非对任意代码的物理保证**。`ctx.effect()` 只能回滚**通过它注册**的东西——一个插件若直接 `setInterval` 而不包进 effect，卸载时就会漏（tutorial 02 专门演示了「必须包进 effect」，正因默认不追踪）。框架自身的回滚也并非天生无洞：vendor 补丁 6 就列举并修补了「setup 期内启动的卸载」「异步 cleanup 的 owner 可见性」「UNLOADING 期拒绝新 effect」三类 reentrant gap；façade 刻意不暴露 `effect()`，同样说明「任意资源都能被 Cordis 追踪」并不成立 `[verified]`（vendor/README.md 补丁 6/8/9/12；tutorial 02:5-9；tool-cordis README Known Limitations）。
 
 其它已知局限：`SESSION_FORMAT_VERSION` 保持 `0`、无兼容承诺（发布前姿态，AGENTS.md）；vendor 与上游的分叉需靠 sync 流程持续 re-apply 本地补丁，长期维护成本真实存在；HMR 依赖 Node loader internals（经 tsx/ESM），跨 Windows 短名路径等边界曾多次踩坑并被补丁修复（vendor 补丁 9/12）`[verified]`。
 

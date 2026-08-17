@@ -87,14 +87,7 @@ flowchart TD
 
 ### 3.2 order 波段：谁排在模型眼前
 
-段落顺序由 `order` 数字决定（数字小的排在前面），并有一套"波段"约定——把号段划给不同用途，就像给楼层分区 [verified]（`index.ts:56-61`）：`-100` 是 harness 身份行、`0` 是部署 persona（`PERSONA_SECTION`/`PERSONA_ORDER`）、工具用法指引占 `100–199` 这一段。`SystemPrompt` 在构造时就先注册了身份行与 persona 槽这两段，而且身份行独立于所选的 loop 插件，保证不管换哪套主循环，"harness 开场白"都稳定不变 [verified]（`index.ts:356-370`）。
-
-> **ratify-note · 为什么用一个中心 `toolOrder` + order 数字，而非每插件权重**
-> - 候选解释：A 中心化列表（`toolOrder` 显式列全，含一个 `<unlisted-tools>` rest 标记）+ 段落 order 数字；B 每个插件自带优先级权重，组装时归并；C 沿注册顺序（什么都不做）。
-> - 各自利弊：A 优——顺序在一处可读、跨机器确定（字典序 code-unit 比较，locale 无关，`index.ts:180-183`）、误配 fail-loud；缺——`toolOrder` 误配要到首次 assemble 才报未知名（README 已知局限）。B 优——插件自治；缺——全局顺序无处可读、权重冲突难裁决。C 优——零成本；缺——顺序随加载而漂移，不可复现。
-> - 选定 & 理由：选 A。第一性上"模型读到的顺序"是一个需要被单点掌控且可复现的事实；源码用字典序兜底 + rest 标记插入未列工具，兼顾显式与省心 [verified]（`index.ts:164-178`）。
-> - 证据等级：[verified]（`index.ts:146-183`；README `toolOrder` 条目）。
-> - 残余风险 / pre-mortem：若半年后被证伪，最可能因大型部署里 `toolOrder` 维护成本超过其可读收益，退回"分组权重"。
+段落顺序由 `order` 数字决定（数字小的排在前面），并有一套"波段"约定——把号段划给不同用途，就像给楼层分区 [verified]（`index.ts:56-61`）：`-100` 是 harness 身份行、`0` 是部署 persona（`PERSONA_SECTION`/`PERSONA_ORDER`）、工具用法指引占 `100–199` 这一段。`SystemPrompt` 在构造时就先注册了身份行与 persona 槽这两段，而且身份行独立于所选的 loop 插件，保证不管换哪套主循环，"harness 开场白"都稳定不变 [verified]（`index.ts:356-370`）。工具顺序同理走中心化的 `toolOrder` 显式列表（含一个 `<unlisted-tools>` rest 标记安置未列出的工具），没配到的退化为字典序——而且是 code-unit 比较、locale 无关，保证跨机器确定 [verified]（`index.ts:164-183`）。之所以不给每个插件发一个"优先级权重"再归并，第一性的理由是"模型读到的顺序"是一个需要被单点掌控、可复现的事实，分散权重会让全局顺序无处可读、冲突难裁决。
 
 ### 3.3 作用域分叉：一份注册表，多个 agent 视图
 
@@ -147,14 +140,7 @@ sequenceDiagram
 
 前面讲的都是机制本身；这两者则是把这些机制"制度化"、用自动检查兜住的两道门禁。
 
-**工具 Schema catalog（`docs/tool-catalog.md`）**：它是一份清单，列出每个随发行插件贡献给 `ctx.tools` 的工具的 name/description/JSON-Schema。关键不在这份清单长什么样，而在它怎么生成的——`scripts/gen-tool-catalog.ts` 会真的把每个工具插件**启动**到一个真实 Context 上，再调 `ctx.tools.schemas()` 读出模型运行时真正会收到的 `ToolSchema[]`，而不是去解析源码"看它写了什么" [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。一句话：以运行时真值为准，不以代码字面为准。
-
-> **ratify-note · 为什么"启动并采集"而非"解析 AST"生成工具 catalog**
-> - 候选解释：A boot-and-harvest（启动插件读注册表）；B 纯 TypeScript AST 遍历（像 cordis catalog 那样）。
-> - 各自利弊：A 优——读到的是运行时真值；缺——无源码声明集可枚举，新工具包可能被漏掉。B 优——枚举源码天然完备、无需启动；缺——工具 Schema **静态不可知**：`tool-todo` 的 `enum:[...STATUSES]` 是运行时 spread、description 由字符串拼接、`tool-subagent` 名字是 `config.toolName`、MCP 插件可直接注册裸 JSON Schema——AST 会产出"说谎的文档"。
-> - 选定 & 理由：选 A，并用**完整性守卫** `assertManifestComplete` glob `packages/*/tool-*`、任何包缺席 boot 清单即 hard-fail，把 B 免费获得的"不漏"属性重建出来 [verified]（`gen-tool-catalog.ts:581-588,622-623`）。
-> - 证据等级：[verified]（`.agents/notes/.../2026-07-02-tool-schema-catalog.md`）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因 boot 清单的手写"启动配方"维护负担增长——但该 note 明确论证 provider/config 是策略、不可从布局安全推断，故保留手写。
+**工具 Schema catalog（`docs/tool-catalog.md`）**：它是一份清单，列出每个随发行插件贡献给 `ctx.tools` 的工具的 name/description/JSON-Schema。关键不在这份清单长什么样，而在它怎么生成的——`scripts/gen-tool-catalog.ts` 会真的把每个工具插件**启动**到一个真实 Context 上，再调 `ctx.tools.schemas()` 读出模型运行时真正会收到的 `ToolSchema[]`，而不是去解析源码"看它写了什么" [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。一句话：以运行时真值为准，不以代码字面为准。之所以不能走"纯 AST 遍历源码"这条更省事的路，根子在于工具 Schema **静态不可知**——`tool-todo` 的 `enum` 是运行时 spread、description 靠字符串拼接、`tool-subagent` 的名字来自 `config.toolName`、MCP 插件更是直接注册裸 JSON Schema，硬解析源码只会产出"说谎的文档"；代价是无源码声明集可枚举、新工具包可能被漏掉，于是用**完整性守卫** `assertManifestComplete`（glob `packages/*/tool-*`、任何包缺席 boot 清单即 hard-fail）把 AST 免费获得的"不漏"属性重建回来 [verified]（`gen-tool-catalog.ts:581-588,622-623`）。
 
 生成出来的这份清单还会被 `verify-tool-catalog`（`doc-sync` 里的一环）持续验鲜：只要 Schema 变了而提交进仓库的文件没跟着更新，CI 就失败；有新的 `tool-*` 包没被收进清单，完整性守卫会直接报错 [verified]（tool-catalog.md:8）。这与 cordis catalog 形成对照——后者用纯 AST pass（静态扫源码）就够，因为事件名/服务名都是能从源码回溯的静态字符串字面量。同一条"验实际的世界、而不是听它自述"的纪律，针对两类文档各自挑了合适的技术。
 
@@ -188,14 +174,7 @@ flowchart TD
 
 ## 七、竞品/横向对比与仍存的局限
 
-社区对 dsh 工具调用采用严格 JSON Schema 有正面评价（HN 上 JonChesterfield 称其超过 Codex）[claimed]（社区认知地图 E 节）。但那更多是外在观感；从本章看到的机制层面，真正的区别在于：**提示词与 Schema 都被从"内核特权"降格为可组合、可按作用域覆盖、可用门禁验鲜的普通插件贡献**。
-
-> **ratify-note · dsh 的 waterfall 组装相较通用 harness 是否更优**
-> - 候选解释：A 单一中心模板/常量拼接（多数轻量 harness 的默认）；B dsh 的注册表 + 作用域瀑布 + 门禁。
-> - 各自利弊：A 优——简单、少抽象、易读一眼看全；缺——所有权集中、无作用域分叉、加工具即改中心文件。B 优——所有权分散到拥有该事实的包、天然支持多 agent 视图、误配 fail-loud、文档由 catalog/README 门禁托底；缺——机制复杂（层、瀑布、脱离拷贝、complete 语义），首次阅读成本高。
-> - 选定 & 理由：在"多 agent、可替换插件、AI 大规模并行开发"的语境下选 B——分散所有权与门禁是应对规模的必要代价；但对小型单-agent 部署，A 的简单未必更差。故不下"B 全面更优"的定论，只说"B 匹配 dsh 的规模与可替换性目标"。
-> - 证据等级：[inferred]（机制 [verified] 于本章源码；"更优"是语境依赖判断）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因绝大多数真实部署只跑单一 persona + 固定工具集，此时瀑布/作用域的表达力闲置而复杂度全额付出。
+社区对 dsh 工具调用采用严格 JSON Schema 有正面评价（HN 上 JonChesterfield 称其超过 Codex）[claimed]（社区认知地图 E 节）。但那更多是外在观感；从本章看到的机制层面，真正的区别在于：**提示词与 Schema 都被从"内核特权"降格为可组合、可按作用域覆盖、可用门禁验鲜的普通插件贡献**。不过这并不等于"注册表 + 作用域瀑布全面更优"：分散所有权与门禁是应对"多 agent、可替换插件、大规模并行开发"的必要代价，而对只跑单一 persona、固定工具集的小型部署，中心模板的简单未必更差——机制层已 [verified]，"更优"则是语境依赖的 [inferred] 判断。
 
 **仍存的局限**（以下均 [verified] 于 README 已知局限）：`{{…}}` 没有字面量转义语法（想在提示词里原样输出两个花括号目前没有官方写法），这一项被 deferred，等真有 prompt 需要再补；`toolOrder` 误配要延后到首轮 assemble 才报；同 order 段落的 tie-break 靠注册顺序、依赖波段约定而非强制规范化；部署方也没有一个面向终端用户的 prompt 编辑 API——想改提示词文本，只能走 config/composition，或者去改拥有那段文字的那个插件。
 

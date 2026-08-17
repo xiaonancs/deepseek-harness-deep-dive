@@ -53,13 +53,6 @@ git log --all --format="%s %b" | grep -i koishi
 
 这些提交在修 Cordis 的代码、却挂着 `koishijs/koishi` 的 issue 号，说明 Cordis 与 Koishi 内核在那段时间共享同一批问题——**这是"同源"的硬证据**，而不只是传闻`[verified]`（上述 `git log` 命令可复现）。至于"究竟是先有 Koishi 再抽出 Cordis，还是反向重构"这类**先后顺序与动机**问题，仓库本身无法逐字证明，只能记为 `[inferred]`。
 
-> **ratify-note · Cordis 与 Koishi 的血缘定性**
-> - 候选解释：A「Cordis 是从 Koishi 核心抽取、下沉出来的通用内核」；B「Cordis 与 Koishi 只是同一作者的两个独立项目，无代码继承」。
-> - 各自利弊：A 有 commit 直接引用 `koishijs/koishi` issue、且同一作者/同一套 Context-Service-Plugin 术语支撑，缺点是仓库内无一处 markdown/json 出现 "koishi" 字样（`grep -rin koishi` 命中为 0），"抽取"的方向与时点无逐字记录；B 能解释文档里对 Koishi 的沉默，但无法解释为何 Cordis 的早期 bug 会挂 Koishi 的 issue 号。
-> - 选定 & 理由：选 A。git 历史里跨仓库引用 Koishi issue 是承重证据，同源关系成立；但"抽取"的具体路径降级表述。
-> - 证据等级：同源关系 `[verified]`（`git log ... | grep koishi`，4 条命中）；"从 Koishi 下沉/抽取的方向与时点" `[inferred]`（作者同一 + 术语同构，非直证）。
-> - 残余风险 / pre-mortem：若半年后此判断被证伪，最可能因作者澄清"两者是并行演化、共享 issue 只是顺手记录"，那时"抽取"一词需改为"共同演化"。
-
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
 ```mermaid
@@ -150,25 +143,11 @@ Cordis 已有相当长的开发史。`git rev-list --count HEAD` 给出 **550 �
 
 成熟度上有两个必须直说的信号。其一，README 明写 **"Cordis is under active development. The API is not yet stable and may change without notice."**（仍在活跃开发，API 尚不稳定，可能无预告变更）`[verified]`（`repo/cordis/README.md:7`）。其二，内核版本停在 `4.0.0-rc.8`（rc = release candidate，发布候选，尚未正式 4.0）`[verified]`。近期提交也印证了这一点——2026 年 8 月的提交多是 `fix(core)`/`perf(core)` 级别的核心修补，例如 "keep wrapped fiber state canonical (#40)"、"track direct service callers (#35)"（`git log -8`，`[verified]`）。
 
-> **ratify-note · 该如何向读者定性 Cordis 的"成熟度"**
-> - 候选解释：A「成熟稳定、可放心依赖」；B「核心机制已成型、但 API 面仍在收敛，属 rc 阶段」。
-> - 各自利弊：A 符合"四年 550 提交"的直觉，缺点是与 README 的"API not yet stable"和 `4.0.0-rc.8` 版本号直接矛盾；B 更贴合证据，缺点是听上去不如 A 让人安心。
-> - 选定 & 理由：选 B。四年历史证明"活得久、迭代多"，但 rc 版本号 + 官方"不保证 API 稳定"是作者自陈的一手信号，成熟度应描述为"机制成型、接口未定"。
-> - 证据等级：`[verified]`（README.md:7、core/package.json:4、`git log` 提交轨迹）。
-> - 残余风险 / pre-mortem：若半年后此判断被证伪，最可能因 Cordis 发布了正式 4.0 并冻结 API，届时"未稳定"需改为"已稳定"。
-
 ## 五、与 DeepSeek Harness 的关系锚点
 
 本章开头的问题——"它为什么出现在 dsh 里"——答案的第一个锚点就藏在 README 里。Cordis 的官方文档链接不是指向它自己的域名，而是指向 **`https://deepseek-harness.github.io/deepseek-harness/reference/cordis-primer`**`[verified]`（`repo/cordis/README.md:10`）。也就是说，Cordis 的入门文档被托管在 dsh 的站点下。
 
 反过来，`repo/cordis/` 本身就是 dsh 仓库里的一份 **vendored（内嵌）副本**——dsh 把 Cordis 整个克隆进自己的代码树，作为底层运行时内核使用。这解释了 Part V 存在的意义：要读懂 dsh 的插件化架构，就得先读懂它脚下这台内核。
-
-> **ratify-note · Cordis 之于 dsh 是"依赖"还是"内化的内核"**
-> - 候选解释：A「Cordis 只是 dsh 的一个普通第三方 npm 依赖」；B「Cordis 是 dsh vendored 进来、深度内化的运行时内核」。
-> - 各自利弊：A 简单，但无法解释为何 Cordis 源码会完整出现在 dsh 仓库树内、且 Cordis 官方文档反托管在 dsh 站点；B 能同时解释这两点，缺点是"内化程度多深"需 Ch29/Ch21 的接入细节才能坐实。
-> - 选定 & 理由：选 B。文档反指 + 源码内嵌两条证据共同指向"dsh 把 Cordis 当作自己内核的一部分来维护"。
-> - 证据等级：文档反指 `[verified]`（README.md:10）；源码内嵌 `[verified]`（`repo/cordis/` 位于 dsh 仓库内）；"内化深度"留待 Ch29/Ch21，本章不下定论。
-> - 残余风险 / pre-mortem：若被证伪，最可能因 dsh 后续改为直接 npm 依赖上游 Cordis、删除 vendored 副本，届时关系需重述为"外部依赖"。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 

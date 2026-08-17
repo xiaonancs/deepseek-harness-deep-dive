@@ -45,7 +45,7 @@ Loader 把树拆成三个协作的类：
 - **`EntryGroup`**（`config/group.ts`）——一组有序的 `Entry`，对应 YAML 里的一段列表。它负责"这一组内部谁增谁删"的 reconciliation（对账：拿新旧两份清单比对，只动差集）。
 - **`EntryTree`**（`config/tree.ts`）——整棵树的门面：`store`（`id→Entry` 索引）、`root`（根 group）、以及 `create/remove/update/resolve` 等按 `id` 定位并落盘（`write()`）的操作（`tree.ts:76-101`）。`id` 用 `:` 分层，`a:b:c` 表示"a 的子树里 b 的子树里的 c"（`tree.ts:56-67`）。
 
-reconciliation 的核心在 `EntryGroup.update(config)`：把新旧两份 `EntryOptions[]` 各建成 `id→options` 的 map，取并集遍历——新 map 里有的就 `create`（已存在则原地更新），旧 map 里独有的就 `remove`（`group.ts:47-64`）。这就是"对账式"更新：不重挂全树，只结算差异。
+reconciliation 的核心在 `EntryGroup.update(config)`：把新旧两份 `EntryOptions[]` 各建成 `id→options` 的 map，取并集遍历——新 map 里有的就 `create`（已存在则原地更新），旧 map 里独有的就 `remove`（`group.ts:47-64`）。这就是"对账式"更新：不重挂全树，只结算差异。之所以要这么做、而非"清空整组按新清单从头挂一遍"，根因在于 harness 要支持"运行中调一行配置立即生效、其余会话不受打断"：清空重挂会震荡全树、把有状态插件（如已建立的模型会话）无谓重建，而 map 差集加上后文 `Entry.update` 的 `diff` 短路（`group.ts:47-64`、`entry.ts:100-134`）共同保证"变更代价正比于变更量"。[verified]
 
 而单个 `Entry.update()` 决定"这一行到底要不要动 fiber"（`entry.ts:100-134`）：先存一份 `legacy` 快照，写入新 `options`；若这行现在算 `disabled` 就 `fiber?.dispose()` 卸掉；否则比对新旧 `options` 求出变化的键集 `diff`，**只有 `diff` 非空（或强制 `force`）才走 `_patchContext`**，否则直接返回、fiber 纹丝不动。这就是"改一行精确到一行"的实现：没变的行连碰都不碰。
 
@@ -75,13 +75,6 @@ flowchart TD
 </div>
 
 > 图注：`Entry.update` 的判定树（`entry.ts:100-172`）。它证明"改一行只动一行"：只有真正发生变化的行才会走 `_patchContext` 重配置，全新行才走 `init` 挂载，未变行走 `Skip` 分支被完全跳过。
-
-> **ratify-note · 为什么用"逐 id 对账更新"而非"清空重挂"**
-> - 候选解释：A 逐 id reconciliation（现状）——新旧 map 取差集，只 create/remove/update 变化项；B 每次变更清空整个 group、按新清单从头挂一遍。
-> - 各自利弊：A 优在未变插件的 fiber 与其运行时状态（连接、缓存、订阅）完全保留、变更代价正比于差集大小、天然支持"启停单行"；缺在实现复杂——要维护 `id` 索引、要正确处理"entry 从一个 group 移到另一个"（`group.ts:21-24` 注释即为此）。B 优在实现直白、无状态残留；缺在任何一行改动都会震荡全树、有状态插件（如已建立的模型会话）被无谓重建、启停一行等于重启一切。
-> - 选定 & 理由：选 A。第一性上，harness 要支持"运行中调一行配置立即生效而不打断其余会话"，这与 B 的全树震荡直接冲突；`EntryGroup.update` 的 map 差集 + `Entry.update` 的 `diff` 短路（`group.ts:54-63`、`entry.ts:124-133`）共同保证"变更代价 ∝ 变更量"。
-> - 证据等级：[verified]（`group.ts:47-64`、`entry.ts:100-134`）。
-> - 残余风险 / pre-mortem：若半年后被证伪，最可能因 `id` 稳定性成为负担——匿名行（`group.ts:51` 用 `Symbol('anonymous')` 兜底）在重排时无法对账，被当成"删旧增新"而丢状态，倒逼用户处处写显式 `id`。
 
 ## 四、实现细节：include 组合、group 分组、HMR 三集合
 
@@ -142,21 +135,11 @@ sequenceDiagram
 
 ## 六、竞品/横向对比
 
-> **ratify-note · Cordis HMR vs 前端 HMR（Vite/webpack）vs Node --watch**
-> - 候选解释：A Cordis 式"依赖图分类 + 事务回滚 + 保 effect 可逆"（现状）；B Vite/webpack 式模块级 HMR（`import.meta.hot.accept` 手动声明边界）；C Node `--watch` 式"文件一变就重启整进程"。
-> - 各自利弊：A 优在重载单位是"插件 fiber"、卸载即调 effect disposer 从而干净回滚、失败自动退回改动前；缺在依赖 Node 内部 API、只在服务端 harness 语境适用。B 优在生态成熟、边界由开发者显式声明、浏览器侧状态保留好；缺在 accept 边界要人工维护、回滚语义弱（主要靠刷新页面兜底）[claimed]。C 优在实现零成本、无脏状态之虞；缺在丢掉全部进程内状态（会话、连接），对长驻 agent 不可接受。
-> - 选定 & 理由：就 harness"长驻进程 + 有状态会话 + 一切皆可逆插件"的目标，A 是自洽解——它把"重载单位"对齐到 Cordis 的 fiber/effect 模型，于是"卸载"天然等于"跑 disposer"，回滚不需要额外机制。B 的手动 accept 与 C 的整进程重启都无法在"改一个工具、其余会话照跑"这个诉求上达标。
-> - 证据等级：[verified]（A：`hmr/index.ts:311-374` 的 rollback 与 reload）；[claimed]（B/C 为通用工具的二手认知）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因对 Node 内部 `loadCache` 的依赖在某个 Node 版本被彻底封死，A 被迫退化为 C（整进程重启），届时"热"的价值大幅缩水。
+把 Cordis 的 HMR 放到前端的 Vite/webpack 模块级 HMR（靠 `import.meta.hot.accept` 手动声明边界）与 Node `--watch`（文件一变就重启整进程）旁边看，取舍就清楚了。就 harness"长驻进程 + 有状态会话 + 一切皆可逆插件"的目标，Cordis 式方案是自洽解——它把"重载单位"对齐到 fiber/effect 模型，于是"卸载"天然等于"跑 disposer"，失败回滚不需要额外机制（`hmr/index.ts:311-374` 的 rollback 与 reload，[verified]）；Vite 的手动 accept 边界（回滚语义弱、主要靠刷新页面兜底）与 Node `--watch` 的整进程重启（丢掉全部进程内状态）都无法满足"改一个工具、其余会话照跑"这个诉求。代价是它依赖 Node 未公开的内部 API、只在服务端 harness 语境适用（前端两者的能力边界属通用二手认知，[claimed]）。
 
 ## 七、仍存在的问题与局限
 
-> **ratify-note · 模块级 HMR 的可靠性边界**
-> - 候选解释：A 模块级热重载已足够可靠、可默认开启；B 它仍是"未充分验证"的能力、生产形态应保守禁用、只保热重载配置。
-> - 各自利弊：A 优在开发体验最好（改代码即时生效）；缺在 fiber 重挂涉及大量隐式状态迁移（`reload()` 手工接 `entry` 关系，`hmr/index.ts:331-337`），边界条件多。B 优在把风险面收敛到"只热重载 `cordis.yml` 配置"这一相对简单的路径；缺在改插件源码不能即时生效。
-> - 选定 & 理由：dsh 侧的实际选择偏向 B——web bundle 禁用了共享的 module-reload `hmr` 行（注释明写"its reload lifecycle is untested"），并另挂一个 `root: []` 的"只 watch 配置、不 watch 模块"的 HMR 实例（`apps/cli/src/profile-boot.ts:272-284`）。这说明"配置热重载"被当作可靠契约，而"模块热重载"被当作尚在验证的能力。
-> - 证据等级：[verified]（dsh 侧禁用与 config-only 挂载：`profile-boot.ts:272-284`；cordis 侧 config 分支：`hmr/index.ts:143-149`）。
-> - 残余风险 / pre-mortem：若被证伪（即模块级 HMR 其实已够稳），则当前的保守禁用是过度谨慎，白白牺牲了开发体验；反之若它确实脆弱，则需要更多测试覆盖 `reload()` 的状态迁移路径。
+一个必须直说的可靠性边界是**模块级热重载**：改插件源码触发的 fiber 重挂涉及大量隐式状态迁移（`reload()` 手工接 `entry` 关系，`hmr/index.ts:331-337`），边界条件多。dsh 侧的实际选择因此偏保守——web bundle 禁用了共享的 module-reload `hmr` 行（注释明写"its reload lifecycle is untested"），另挂一个 `root: []` 的"只 watch 配置、不 watch 模块"的 HMR 实例（`apps/cli/src/profile-boot.ts:272-284`）。也就是说，"配置热重载"被当作可靠契约，而"模块热重载"被当作尚在验证的能力（cordis 侧的 config 分支见 `hmr/index.ts:143-149`）。[verified]
 
 其余已知边界：`analyzeChanges` 的定点迭代对超大依赖图是 O(依赖数 × 传播轮数)，极端情形有性能上限（`hmr/index.ts:190-222`）；`loadCache` 的 v1/v2 差异靠版本号硬分派，Node 再变内部结构就要再补一路。
 

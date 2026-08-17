@@ -2,7 +2,7 @@
 
 > `dsh` 的第一句自我介绍是"一切皆插件"。但插件要能被挂载、被卸载、被热重载，背后必须先有一个"插件内核"在托底。这个内核不是 `dsh` 自己发明的，而是把一个已有的通用框架——**Cordis**——整份源码搬进仓库、再动了 18 处手术得来的。本章把这层底座单独拎出来:先讲清 Cordis 是什么、从哪来;再顺着 vendored 源码读它的核心机制;然后看 `dsh` 是怎么"收编"它的;最后用一张对比表划清"哪些能力属于 Cordis 这个通用底座、哪些才是 `dsh` 这个 agent 产品自己的加工"。
 >
-> 证据等级贯穿标注:`[verified]` 源码/LICENSE/官方 README 可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径或未能证实。凡涉及血缘、归因的承重判断,一律走 ratify-note 并弱化措辞。
+> 证据等级贯穿标注:`[verified]` 源码/LICENSE/官方 README 可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径或未能证实。凡涉及血缘、归因的承重判断,一律以可查证据为准、明确标注证据等级并弱化措辞。
 
 ## 一、Cordis 是什么,又从哪来
 
@@ -34,13 +34,6 @@ flowchart TB
 
 </div>
 <p>图 21-1 血缘链:同一作者从聊天框架 Koishi 抽出通用内核 Cordis,dsh 再把 Cordis 整份 vendored 进来并特化为 agent 底座。实线为源码/LICENSE 可证,虚线"抽象自 Koishi"为社区共识的合理推断。</p>
-
-> **ratify-note · Cordis 的血缘该怎么写**
-> - 候选解释:A "Cordis 由 Shaddoll/以太工坊社区发起";B "Cordis 由 Shigma 创作、隶属 cordiverse,系从 Koishi 抽象而来";C 只写"Cordis 是一个第三方微内核框架",不追溯来历。
-> - 各自利弊:A 优——若成立可解释用户听闻的口径;缺——两份官方 README、LICENSE、组织信息中**无任何佐证**,与可查证据冲突。B 优——作者署名双向可查(cordis 与 koishi 版权同为 Shigma),cordiverse 组织可查;缺——"抽象自 Koishi"这一步 README 未逐字点名,只能算共识。C 优——最保守、零风险;缺——丢掉了读者理解 dsh 为何选它的关键背景。
-> - 选定 & 理由:选 B,但把"抽象自 Koishi"降级为 `[inferred]`,把 A 明确标注为"未能证实"。第一性上,LICENSE 版权人是可直接读到的一手事实 `[verified]`;而作者同一性(Shigma 同时署名两个项目)使"同源抽象"成为最省假设的解释 `[inferred]`。
-> - 证据等级：作者与组织 `[verified]`（`vendor/cordis/LICENSE:3`、官方 README）；"抽象自 Koishi" `[inferred]`；"Shaddoll/以太工坊发起" `[claimed]`（未能证实）。
-> - 残余风险 / pre-mortem:若日后此判断被修正,最可能是"以太工坊"确为 cordiverse 的中文社区别名或早期发起组织——本章因此只主张可查证的作者与组织事实,不否认存在未公开的社区渊源,也不把它写成定论。
 
 ## 二、Cordis 核心机制源码剖析
 

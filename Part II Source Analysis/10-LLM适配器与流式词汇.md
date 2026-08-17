@@ -33,13 +33,6 @@
 
 `dsh` 选择**自有词汇**：消息是内容块数组，翻译成本留在适配器里（`2026-06-11-content-block-vocabulary.md`）。这不是零成本方案——每个适配器都要付翻译代价——但换来的好处是：reasoning（思维过程）有了一个专门的落脚点、工具结果是结构化的嵌套块，而不必迁就某一家 chat-completions 把什么都压平成一层的扁平 shape（数据形状）。用一句话概括这个取舍：宁可让每个适配器多干点翻译活，也不让内核被某一家 API 的形状绑架。
 
-> **ratify-note · 为何自造内容块词汇而非镜像 OpenAI/Anthropic**
-> - 候选解释：A 镜像 DeepSeek/OpenAI chat-completions shape（首个 provider 零映射）；B 照搬 Anthropic Messages 块结构（久经考验）；C 自有可合并扩展词汇。
-> - 各自利弊：A 对富内容（reasoning、结构化工具结果）很别扭，且把首家 provider 的形状焊死进内核；B 成熟，但让内核类型镜像一个 harness 并不首要针对的第三方 API；C 需每个适配器付翻译成本，但把 provider 差异全部隔离在接缝之外，reasoning/tool-result 各有核心归宿。
-> - 选定 & 理由：选 C。ADR 明确把 A/B 列为已考量备选并给出否决理由（`2026-06-11-content-block-vocabulary.md` "Alternatives considered"）；`ContentBlockMap` 用声明合并让插件加块类型（`types.ts:99`），与 `MessageSource`/`FinishReason` 等"stringly"字段共用同一 merge-extensible-map 模式。
-> - 证据等级：[verified] `types.ts:99-116`、ADR 原文。
-> - 残余风险：多模态（image）已因缺乏协调的适配器/UI/压缩支持被移除过一次；若未来某 provider 的原生形状与该词汇长期冲突，成本会转嫁到那个适配器而非内核。
-
 ### StreamChunk：一套七成员的原始协议
 
 `StreamChunk` 是一个**闭合**判别联合（`types.ts:291`）`[verified]`。"判别联合"可以理解成"一个带标签的信封族"：每个信封贴着 `type` 标签，拆开才知道里面装的是哪种内容；而"闭合"意味着信封的种类就这么固定的几种、不允许悄悄新增。这里一共七种：
@@ -111,13 +104,6 @@ flowchart TB
 图注：设计验证孪生的字段级对照。中央是唯一的 `StreamChunk` 契约，两侧是内部实现刻意不同的真实适配器；标出的正是各自暴露的差异字段（tool 参数形态、库级重试、`stop` 支持、错误暴露风格）。此图证明"中立"不是自我声明，而是被两个必须同时满足契约的真实实现逼出来的。
 
 </div>
-
-> **ratify-note · 为何要双真实适配器，而非单个或加一个 mock**
-> - 候选解释：A 单适配器（沿用现状基线）；B 一真一 mock；C 两个真实适配器且内部实现刻意不同。
-> - 各自利弊：A 代码更少、e2e 成本减半，但"provider 中立"无从验证，词汇会静默编码"DeepSeek-经由-fetch"的假设；B 更便宜，但 mock 不触碰真实 provider 的线缆怪癖，证明力弱；C 是"真对真"，持续验证接缝中立性并额外提供第二个实现范例，代价是适配器与 key 门禁 e2e 维护翻倍（都覆盖 V4 Flash/Pro 的代表性 reasoning 模式）。
-> - 选定 & 理由：选 C。ADR 的 "Alternatives considered" 逐条列出 A/B 的不足并给出否决理由；库封装适配器实实在在暴露了单个直连适配器会隐藏的分歧——两条错误路径的差异（见下）正是这样被逼出来的（`2026-06-13-twin-llm-adapters.md`）。
-> - 证据等级：[verified] ADR 原文 + 两适配器 `stream()` 的错误处理分别在 `llm-deepseek/adapter.ts:246-258` 与 `llm-pi-ai/stream.ts:196-201`。
-> - 残余风险：ADR 自己写明"未来一套一致性测试套件（conformance suite）可能通过一份 superseding note 退役其中一个适配器"——即孪生的价值随一致性测试成熟而递减，是有意保留的可逆决策，而非永久架构。
 
 ## 四、实现细节关键点
 
@@ -214,12 +200,7 @@ flowchart TD
 
 `StreamChunk` 的定位，类似 Vercel AI SDK 里的 stream part、或 LangChain 的 streaming callback：大家都想给"多 provider"这件事一个统一的增量协议，好让上层只对一套接口编程。HN 讨论里，`dsh` 工具调用所用的严格 JSON schema 得到好评（有人称其超过 Codex）`[claimed]`（社区认知地图 E 节）。
 
-> **ratify-note · dsh 的流式抽象相较通用 SDK 是否更优**
-> - 候选解释：A `dsh` 的"内容块 + 闭合 StreamChunk + 双真实适配器"更严谨；B 通用 SDK（Vercel AI SDK / LangChain）覆盖 provider 更广、更成熟。
-> - 各自利弊：A 有闭合联合的编译期穷尽、reasoning 一等公民、replay 状态归属清晰、且用两个真实实现验证中立性；缺点是只对着自家/单一端点验证，provider 覆盖面远不及通用 SDK。B provider 覆盖广、生态成熟；缺点是"最大公约数"式抽象常把 reasoning/工具参数等细节压平，且中立性靠海量集成而非机制保证。
-> - 选定 & 理由：就 `dsh` 的目标（自家模型的官方 harness + 可替换接缝）而言，A 的机制化验证（孪生 + 闭合联合 + 契约不变量）更契合；但"更优"仅限此语境，不构成通用结论。
-> - 证据等级：[inferred]（机制对比源码可证 `types.ts:291`/ADR，"孰优"含目标假设）；竞品口碑 [claimed]（社区认知地图）。
-> - 残余风险：若 `dsh` 未来需要广接第三方 provider，通用 SDK 的成熟集成面可能反超；那时"双真实孪生"的边际价值下降（ADR 已预留退役闸）。
+要比出个高下，得先说清语境。就 `dsh` 自家的目标（自家模型的官方 harness + 可替换接缝）而言，它这套"闭合 `StreamChunk` 的编译期穷尽 + reasoning 一等公民 + replay 状态归属清晰"再叠加双真实孪生的机制化验证，比通用 SDK 靠海量集成堆出来的中立性更贴合——后者那种"最大公约数"式抽象往往把 reasoning、工具参数这些细节压平。但这个"更优"只在此语境成立、不构成通用结论：一旦 `dsh` 要广接第三方 provider，Vercel AI SDK / LangChain 成熟的集成面反而可能反超（机制对比源码可证 `types.ts:291`/ADR `[inferred]`，竞品口碑 `[claimed]`）。
 
 ## 七、仍存在的问题与局限
 

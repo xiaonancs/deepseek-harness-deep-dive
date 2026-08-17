@@ -2,7 +2,7 @@
 
 > 读到这里，你已经拆过 `dsh` 的 agent loop、会话溯源、能力接缝，也读过它脚下那块叫 Cordis 的微内核主板，还啃完了那篇把这套机制形式化的论文。剩下一个问题没被正面回答:**这三样东西——一个聊天机器人框架、一个通用内核、一个 AI 实验室的 agent 外壳——到底是什么关系?** 为什么一家顶级 AI 实验室会把自己的旗舰 agent harness 建在一个社区聊天机器人框架抽出来的内核上?本章作为 Part V 的收官,不再钻单个机制,而是把镜头拉到最远,把「血缘、作者、采用、论文、边界」这五条线一次性理清——读完你应能对任何人讲明白 `dsh`、Cordis、Koishi、那篇论文各自站在哪、彼此怎么连。
 >
-> 采用过程的技术细节(18 处本地修改逐条、门禁链路)已在 [第 21 章](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)讲透,本章只做**关系层的总结与对照**,不重复展开。证据分三档:`[verified]` 源码/LICENSE/git/官方 README 可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径未证实;承重判断走 ratify-note 并守证据边界。
+> 采用过程的技术细节(18 处本地修改逐条、门禁链路)已在 [第 21 章](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)讲透,本章只做**关系层的总结与对照**,不重复展开。证据分三档:`[verified]` 源码/LICENSE/git/官方 README 可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径未证实;承重判断均逐条标注证据等级、严守证据边界。
 
 ## 一、一条血缘链:Koishi → Cordis → dsh
 
@@ -68,13 +68,6 @@ flowchart TB
 
 </div>
 <p>图 29-2 作者线。实线均为 git / LICENSE 可证的一手关系:Shigma 主导 Cordis 与 Koishi 并给 dsh 提交论文链接,Tianyi Cui 既是论文共同作者又是 dsh 头号提交者。唯一虚线「Yifan Shi 即 Shigma」为音名相合的推断,未取得论文正文直接证据。</p>
-
-> **ratify-note · 「Yifan Shi 即 Cordis 作者 Shigma」怎么写**
-> - 候选解释:A 断言「论文第一作者 Yifan Shi 就是 Shigma」;B 记为推断、标 `[inferred]`,不下定论;C 完全不提,只说「论文由北大×DeepSeek 三人合著」。
-> - 各自利弊:A 优——若成立则作者链完全闭合、叙事最漂亮;缺——论文正文未出现「Shigma」字样,拼音「Shi」与「Shigma」的相合是弱证据,断言即越界。B 优——既点出这条很可能存在的强关联,又不把弱证据当铁证,符合证据边界;缺——留一个悬念。C 优——最保守零风险;缺——丢掉了读者理解「作者深度参与」的关键线索,而 Shigma 亲手提交论文链接这件事本已 `[verified]`,回避反而失真。
-> - 选定 & 理由:选 B。第一性上,「Shigma 提交论文链接」是 git 可证的一手事实 `[verified]`,足以说明作者深度介入;而「Yifan Shi=Shigma」是在此之上的一层身份合并,只有音名旁证,应停在 `[inferred]`。
-> - 证据等级:Shigma 提交论文链接 `[verified]`(commit `0ae8f27b93`);Yifan Shi=Shigma `[inferred]`(音名相合,无正文直证)。
-> - 残余风险 / pre-mortem:若日后被证伪,最可能是 Yifan Shi 与 Shigma 实为两人——本章因此只主张「Shigma 深度参与 dsh」这条硬事实,把身份合并留作推断,不影响任何承重结论。
 
 ## 三、dsh 如何采用 Cordis(关系层对照)
 
@@ -155,13 +148,6 @@ flowchart TB
 
 </div>
 <p>图 29-4 三角关系。论文形式化范式、Cordis 实现范式、dsh 应用范式,三者首尾相接成环;且 Cordis 的 README 把 Paper 与 Documentation 分别指向 cordiverse/paper 与 deepseek-harness.github.io,底座与产品共享同一套文档基建。虚线「dsh 是论文验证方向」为推断——论文正文未点名 dsh,结论建立在机制同构+作者链+§8 明示方向三条证据上。</p>
-
-> **ratify-note · 「dsh 是论文所构想范式的工程验证体」这一承重判断**
-> - 候选解释:A 断言「dsh 就是论文验证的那个 self-evolving harness」;B 记为「有据推断 `[inferred]`」,列明支撑证据但不当作论文声明;C 只讲论文与 Cordis 的关系,不牵扯 dsh。
-> - 各自利弊:A 优——叙事闭环最强;缺——论文正文并未点名 dsh,断言等于替论文下结论,越过证据边界。B 优——把三条实证(机制同构、作者链交集、§8 明示自演化 harness 为验证方向)如实摆出,又不冒充论文原话;缺——结论保留推断性。C 优——最保守;缺——丢掉本章最有价值的洞察,而三条支撑证据均已 `[verified]`,回避反而是信息损失。
-> - 选定 & 理由:选 B。第一性上,论文 §8 把自演化 harness 列为验证方向 `[verified]`、Tianyi Cui 兼任论文作者与 dsh 头号提交者 `[verified]`、dsh 具备 self-modification 能力 `[verified]`——三条独立证据同向,使「dsh 是该范式工程验证体」成为最省假设的解释,但论文未直接声明,故停在 `[inferred]`。
-> - 证据等级:三条支撑证据各自 `[verified]`;合成结论 `[inferred]`。
-> - 残余风险 / pre-mortem:若被证伪,最可能是论文作者心中的「验证方向」另有其指、dsh 只是恰好符合描述而非被论文特指——本章因此只说「很可能是」,不写成论文的断言。
 
 ## 六、对读者的启示:想懂 dsh,必先懂 Cordis
 

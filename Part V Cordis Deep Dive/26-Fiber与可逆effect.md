@@ -54,7 +54,7 @@ flowchart TD
 - **过渡态**：`LOADING`（正在执行插件 callback）与 `UNLOADING`（正在逆序回收副作用）。
 - **异常/终止**：`FAILED`（加载中抛错）与 `DISPOSED`（被彻底销毁，`uid=null`）。
 
-状态不是到处乱设的，而是由一个纯函数 `_getState()` 从更底层的事实**推导**出来（`fiber.ts:348-353`）：`uid===null` → DISPOSED；有 `_error` → FAILED；`epoch !== INACTIVE` → ACTIVE；否则 PENDING。真正写 `state` 字段的唯一入口是 `_updateState()`（`fiber.ts:355-369`）：它先记旧态，跑回调拿新态（回调不返回就用 `_getState()` 兜底），若有变化就 `emit('internal/status', this, oldState)` 广播，并在跨越 ACTIVE 边界时通知本 fiber 提供的服务（`fiber.ts:363-368`）。
+状态不是到处乱设的，而是由一个纯函数 `_getState()` 从更底层的事实**推导**出来（`fiber.ts:348-353`）：`uid===null` → DISPOSED；有 `_error` → FAILED；`epoch !== INACTIVE` → ACTIVE；否则 PENDING。这里藏着一个刻意的取舍：Cordis 没有另设一个布尔 `active` 字段来表达"未激活"，而是把"是否激活"和"依赖快照版本"合并进同一个 `epoch` 字符串、用哨兵 `INACTIVE` 兜底——热插拔最怕"状态与它的派生状态不一致"，把二者收敛成单一真相源，`_setEpoch` 的相等比较一次就判掉"要不要迁移"，从结构上消除了不一致窗口；state 从 epoch 派生而非另存，正印证这一设计取向（`fiber.ts:101、399-413`）。[verified] 真正写 `state` 字段的唯一入口是 `_updateState()`（`fiber.ts:355-369`）：它先记旧态，跑回调拿新态（回调不返回就用 `_getState()` 兜底），若有变化就 `emit('internal/status', this, oldState)` 广播，并在跨越 ACTIVE 边界时通知本 fiber 提供的服务（`fiber.ts:363-368`）。
 
 > 这意味着：外部想观察"某插件是否就绪"，订阅 `internal/status` 事件即可；而 LOADING/UNLOADING 两个过渡态之所以存在，是为了让"异步加载/卸载途中"有名字可称呼——这正对应论文把迁移动作提升为"惯性态"（Part IV 图 4）。
 
@@ -154,13 +154,6 @@ flowchart TD
 
 <p>图注：ctx.effect() 的可逆契约。归一后收集 disposer，返回幂等 wrapper；撤销时反序执行，重复撤销为空操作；嵌套 effect 通过 collect 里的 delete 改挂成父子树。三条性质（反序、幂等、嵌套树）合起来保证"完全回滚"。[verified] fiber.ts:275-340, 300-306, 322-326, utils.ts:26-30</p>
 
-> **ratify-note · 为何用哨兵字符串 `INACTIVE` 而非独立布尔字段表达"未激活"**
-> - 候选解释：A 用专用布尔 `active` 字段 + 单独存依赖快照；B（现状）把"是否激活"和"依赖快照版本"合并进同一个 `epoch: string`，用哨兵 `'__INACTIVE__'` 表示未激活。
-> - 各自利弊：A 语义直观、字段单一职责，但"激活判定"与"快照变没变"要各存一份、两处同步，易出现两者不一致的窗口；B 用一个值同时承载"激活与否 + 快照身份"，`_setEpoch` 的相等比较（`fiber.ts:401`）一次判掉"要不要迁移"，代价是 `INACTIVE` 成为魔法常量、可读性略降。
-> - 选定 & 理由：选 B。热插拔正确性最怕"状态与派生状态不一致"，把二者合并成单一真相源（epoch）从结构上消除了不一致窗口；`_getState` 只从 epoch/uid/_error 推导 state（`fiber.ts:348-353`），也印证"派生而非另存"的设计取向。
-> - 证据等级：[verified]（fiber.ts:101, 399-413, 348-353）；"为何这样选"属动机推断 [inferred]。
-> - 残余风险 / pre-mortem：若哪天依赖快照需要携带布尔无法编码的信息（如权重、优先级），单字符串可能不够表达，届时或需回到 A 式分离结构。
-
 ---
 
 ## 四、restart / update 与重入卸载
@@ -172,6 +165,8 @@ flowchart TD
 看 `_reload()`（`fiber.ts:415-435`）：它先快照 `store`，`await` 执行 callback；跑完后在 `_updateState` 里检查——**如果 epoch 在加载期间没变**（`this._runner.epoch === oldEpoch`），就把 `inertia = undefined`，收工（状态推导为 ACTIVE）；**如果变了**（加载途中依赖没了），立刻转身调 `_unload()`，`inertia` 换成卸载 Promise，状态转 UNLOADING。`_unload()`（`fiber.ts:437-458`）对称：回收完检查 epoch，若又变回"该激活"，再转 `_reload()`。
 
 而 `_setEpoch` 里那句 `if (this.inertia) return`（`fiber.ts:403`）是这套机制的闸门：**迁移进行中，新的目标变化只更新 epoch、不立即动作**；等当前迁移在 `_reload`/`_unload` 末尾"回头看"时，再据最新 epoch 决定下一步。这就避免了"加载还没完就并发启动卸载"的撕裂。这正是 Part IV 图 4 的 inertial state machine。
+
+这里其实是在"惯性排队"与"抢占中断"之间做了取舍，而 Cordis 选了前者。根因在于热插拔的第一诉求是"卸载能完全回滚"，而完全回滚要求副作用始终处于已知的完整状态——中断一个跑到一半的异步 callback，已建的连接、已注册的钩子会卡在半成品状态，回滚点根本说不清；惯性态用串行化保证"任一时刻至多一个迁移在跑、且总有明确回滚点"，`_reload`/`_unload` 末尾的 epoch 回看又保证最终会收敛到最新目标，兼顾了正确性与最终一致（`fiber.ts:403、427-434、450-457、460-466`）。[verified]
 
 ### 4.2 restart 与 update
 
@@ -188,13 +183,6 @@ flowchart TD
 3. **迁移末尾回头看**（`fiber.ts:427-434`、`fiber.ts:450-457`）：每段迁移结束后，用最新 epoch 决定要不要再来一轮，形成"串行收敛"而非"并发打架"。
 
 再加上根 fiber 卸载时的 `while (this.inertia) await this.inertia`（`fiber.ts:195-197`），确保销毁前把所有在途迁移排空。构造函数上方那段注释（`fiber.ts:189-194`）还诚实地交代了一个边界：`inertia` 本身不该 reject（`_reload`/`_unload` 都用 `ctx.logger.error` 吞掉工作错误），万一它真 reject，只可能是 logger 自己坏了，此时选择让异常上抛、以进程崩溃作为"诚实结局"——不掩盖不可恢复的故障。
-
-> **ratify-note · "迁移途中改目标"选择"惯性排队"而非"抢占中断"**
-> - 候选解释：A 抢占——新目标一来就中断当前迁移，立即切到新目标；B（现状）惯性——当前迁移必须跑完，新目标先记账、迁移末尾再统一响应最新态。
-> - 各自利弊：A 响应最快、目标态最新，但中断一个跑到一半的异步 callback 极难做到"干净"——已建的连接、已注册的钩子处于半成品状态，回滚点不明确，正确性风险高；B 牺牲一点响应延迟（要等当前迁移完），换来"任一时刻至多一个迁移在跑、且总有明确回滚点"，正确性可证。
-> - 选定 & 理由：选 B。热插拔的第一诉求是"卸载能完全回滚"，而完全回滚要求副作用处于已知的完整状态；惯性态用串行化把并发复杂度压到最低，`_reload`/`_unload` 末尾的 epoch 回看又保证最终会收敛到最新目标，兼顾了正确性与最终一致。
-> - 证据等级：[verified]（fiber.ts:403, 427-434, 450-457, 460-466）。
-> - 残余风险 / pre-mortem：若某插件的加载耗时极长（如拉大模型权重），惯性排队会让"想快速卸载它"的请求也得干等，表现为响应迟钝；届时可能需要给 callback 引入协作式取消点（对应论文 effect iterator 的 step 边界）来缓解。
 
 ---
 
@@ -214,12 +202,7 @@ flowchart TD
 
 Part IV 图 1（base lifecycle 的 INACTIVE↔ACTIVE 两态）对应本章的 PENDING↔ACTIVE 稳定态；图 4（inertial state machine）对应 LOADING/UNLOADING 两个过渡态加惯性闸门。论文给的是代数与状态机的**形式**，fiber.ts 给的是同一套东西的**运行时实现**——两者可以互为注解。
 
-> **ratify-note · fiber.ts 是否可算作论文的"权威参考实现"**
-> - 候选解释：A fiber.ts 就是论文形式化的直接落地，术语（epoch、reload/unload、可逆 effect）一一对应，可视为参考实现；B 二者只是"结构同构"，fiber.ts 是独立工程演进的产物，论文事后做的形式化抽象，不宜称"实现了论文"。
-> - 各自利弊：A 叙事清晰、便于教学，但可能夸大因果（是先有代码还是先有论文？源码不能证明时间先后与意图）；B 措辞保守、守住证据边界，但可能低估二者高度一致这一客观事实。
-> - 选定 & 理由：偏向 B 的措辞、承认 A 的事实。可证的是"术语与机制高度对应"（上表 [verified]）；不可证的是"谁实现了谁/设计动机"。Part IV §4.3 也自陈 Cordis 是论文的实现载体、Koishi 用 v3 而形式化对应 v4，说明版本与形式化之间存在演进错位，故不宜简单断言"fiber.ts = 论文实现"。
-> - 证据等级：机制对应 [verified]（见上表）；"实现关系/先后"[inferred]，动机 [claimed]。
-> - 残余风险 / pre-mortem：若日后 fiber.ts 重构偏离论文模型（如改用抢占式迁移），本节的一一对应会部分失效，需据当时源码重新校准。
+不过要守住证据边界：术语与机制的一一对应是可核验的（上表 [verified]），但"究竟谁实现了谁、设计孰先孰后"源码无法证明——Part IV §4.3 自陈 Koishi 用 v3、而形式化对应 v4，二者之间存在版本演进错位，因此不宜简单断言"fiber.ts 就是论文的实现"，这层关系只能记为 [inferred]（动机则更弱，属 [claimed]）。
 
 ---
 

@@ -73,7 +73,7 @@ sequenceDiagram
 
 </div>
 
-step 是否结束、turn 是否续步，由数据决定而非监听器顺序——换句话说，是"事实长什么样"说了算，不是"谁先被通知到"说了算。`step()` 返回 `StepEndReason`：模型自然收尾无工具调用 → `completed`；命中输出上限 → `max-tokens`（`agent.ts:391`）；有工具调用则跑 `executeToolCalls` 后按是否 `concluded` 返回（`agent.ts:393-399`）。`max-tokens` 是**粘性**的：一旦某 step 触顶，后续正常完成的 step 不能把 turn 结局降级（`agent.ts:285-290`）——好比一次接待里只要有一轮被"字数上限"截断，整场接待的结论就记为"被截断过"，后面几轮答得再顺也不会把这个事实抹掉。turn 续步的条件很直接——`turnEnds` 已定且 `nextStep` 为空才允许收尾，否则 `target='next-step'` 再转一圈（`agent.ts:295-300`）。
+step 是否结束、turn 是否续步，由数据决定而非监听器顺序——换句话说，是"事实长什么样"说了算，不是"谁先被通知到"说了算。`step()` 返回 `StepEndReason`：模型自然收尾无工具调用 → `completed`；命中输出上限 → `max-tokens`（`agent.ts:391`）；有工具调用则跑 `executeToolCalls` 后按是否 `concluded` 返回（`agent.ts:393-399`）。`max-tokens` 是**粘性**的：一旦某 step 触顶，后续正常完成的 step 不能把 turn 结局降级（`agent.ts:285-290`）——好比一次接待里只要有一轮被"字数上限"截断，整场接待的结论就记为"被截断过"，后面几轮答得再顺也不会把这个事实抹掉。turn 续步的条件很直接——`turnEnds` 已定且 `nextStep` 为空才允许收尾，否则 `target='next-step'` 再转一圈（`agent.ts:295-300`）。之所以把最小单元定在"一次模型请求"而非"一次用户输入到一次答复"，根子上是为了让计费（`usage`）、`request/header` 变更、失败重试都能稳定地挂在每个 step 上——`assistant/message` 事件正是"记录每一次成功的 provider 调用，包括空内容与 max-tokens 收尾"，这只有在 step 是记账单元时才成立（`agent.ts:332-401`、`architecture.md:65` `[verified]`）；若按"输入到答复"划界，工具循环里的多次请求就无法被独立定位、独立记账、独立重试。
 
 把同一条循环换成"状态"视角看，就是一台以数据（而非时间顺序）决定迁移的状态机：turn 一旦 open 便反复 claim→pre-step→step，直到"再无所欠"才走 turn-stopping 收尾，而 reject（被拒）、空首批、以及信号 abort（被中止）各是三条不经过任何完整 step 的旁路出口——它们让一个 turn 可以"什么都没做就体面收场"，这一点下面第四节会细讲。
 
@@ -111,13 +111,6 @@ stateDiagram-v2
 图注：turn/step 的状态机视角。它证明续步与收尾都由数据触发（工具是否欠请求、inbox 是否有待办），而 reject、空首批、abort 三条旁路都不经完整 step 却仍汇入同一个 `turn/end`——与"零 step 也关一个 durable turn"的不变量一致。`[verified]` `agent.ts:246-330`、`architecture.md:65-82`。
 
 </div>
-
-> **ratify-note · turn/step 边界为何这样划**
-> - 候选解释：A 以"一次模型请求"为最小单元（step），turn 只是它的容器；B 以"一次用户输入到一次完整答复"为回合单元，内部请求不单独命名。
-> - 各自利弊：A 优——边界与"落盘一条 `assistant/message`＋其 `tool/result`"天然对齐，回放、计费(`usage`)、`request/header` 变更都挂在 step 上，粒度稳定；缺——概念多一层，使用者要理解"一个 turn 可能好几个 step"。B 优——贴近用户直觉；缺——工具循环里多次请求无法被独立定位、独立记账、独立重试，`max-tokens` 粘性这类跨请求语义无处安放。
-> - 选定 & 理由：源码选 A。`step()` 每圈一次 `llm.stream` + 一批工具，`assistant/message` 事件"记录每一次成功的 provider 调用，包括空内容与 max-tokens 收尾"（`agent-lifecycle.md`），这只有在 step 是记账单元时才成立。
-> - 证据等级：`[verified]`（`agent.ts:332-401`、`architecture.md:65`）。
-> - 残余风险：若将来单请求内出现"部分工具跨请求流式续传"，step 的原子性假设会被冲击，需要更细的子边界。
 
 > **↔ 论文对应**：turn 内 step 的"多步可中断 + step 边界"，在《Spatiotemporal Composability》论文里被形式化为 **effect iterator**（reified delimited continuation）——一次激活顺序执行多步 effect、每步 yield 逆元并 LIFO 累积，续延 $\mathsf{Maybe}(\mathfrak E^{iter})$ 在两次迭代之间提供一个天然中断边界（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §4.3.2，Def.51/52；带转移态的生命周期见 Figure 2）。dsh 的 step 边界与之同构：都是"可迭代、可在边界处改道/中止"的转移过程，而非一步到位的原子激活 `[inferred]`。
 
@@ -165,20 +158,13 @@ flowchart TD
 - `{ kind: 'enter'; messages }`——替换进入 step 的消息批次；
 - `{ kind: 'reject' }`——不开 step。
 
-被拒有一个不直观但重要的后果：**空 claim / 被拒仍然关闭一个花了零 step 的 durable turn**。也就是说，哪怕这一趟一次模型都没请求，日志里照样留下一对"turn 开了又关"的记录。`turn()` 里，`reject` 令 `turnEnds={kind:'blocked'}` 直接 `return false`（`agent.ts:267-269`）；而"首个 enter 被改写为空"（`phase.step===0 && messages.length===0`）令 `turnEnds={kind:'completed'}` 也 `return false`（`agent.ts:274-277`）。无论哪种，`finally` 都会追加 `turn/end`（`agent.ts:316-322`）。对应 `agent/inbox/claimed` 的文档："若 step 被拒，被认领的消息就此终结——既不丢弃也不重发为 user/message，turn 无 step 而关闭。"为什么值得这么做，下面的 ratify-note 专门交代。
-
-> **ratify-note · 被拒的空 claim 为何仍关一个 durable turn**
-> - 候选解释：A 记一条零 step 的 `turn/start`+`turn/end`；B 直接吞掉，什么都不落盘（沿用"没发生就不记"）。
-> - 各自利弊：A 优——日志忠实记录"曾尝试过一个回合但被门禁挡下"，回放、审计、UI 状态与真实驱动一致，"model-visible ⟺ logged"不变量不被破坏；缺——多出看似"空"的回合事件对。B 优——日志更短；缺——一次真实的认领动作（inbox 已被 `claim` 纯删除）却无任何 turn 事件承载，回放时 inbox 投影与事件流对不上，等于制造了一处隐性状态。
-> - 选定 & 理由：源码选 A。`claim` 已经改动了 durable inbox（`inbox.ts:71`），若不落 turn 事件，删除就"无主"；`architecture.md:88` 明确"a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt"。
-> - 证据等级：`[verified]`（`agent.ts:267-277`、`architecture.md:88`、`core.md` `agent/inbox/claimed`）。
-> - 残余风险：若消费者按"turn 必含 ≥1 step"做假设统计，会把这些零 step turn 误计；文档已提示，属已知边界。
+被拒有一个不直观但重要的后果：**空 claim / 被拒仍然关闭一个花了零 step 的 durable turn**。也就是说，哪怕这一趟一次模型都没请求，日志里照样留下一对"turn 开了又关"的记录。`turn()` 里，`reject` 令 `turnEnds={kind:'blocked'}` 直接 `return false`（`agent.ts:267-269`）；而"首个 enter 被改写为空"（`phase.step===0 && messages.length===0`）令 `turnEnds={kind:'completed'}` 也 `return false`（`agent.ts:274-277`）。无论哪种，`finally` 都会追加 `turn/end`（`agent.ts:316-322`）。对应 `agent/inbox/claimed` 的文档："若 step 被拒，被认领的消息就此终结——既不丢弃也不重发为 user/message，turn 无 step 而关闭。"为什么值得这么做？根子在于 `claim` 已经对 durable inbox 做了纯删除（`inbox.ts:71`），若不落这一对 turn 事件，这次删除就"无主"、回放时 inbox 投影与事件流对不上，等于制造了一处隐性状态；反过来记一条零 step 的 `turn/start`+`turn/end`，"model-visible ⟺ logged"不变量就不被破坏——`architecture.md:88` 因此明确"a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt"（`agent.ts:267-277` `[verified]`）。
 
 请求配置的改写走另一个 waterfall `agent/request`（`agent.ts:438-441`），它只能换 provider/model/采样参数（即换哪家模型、哪个型号、温度等旋钮），**不能改消息**——模型可见内容必须走已落盘的通道。换句话说，"给模型多看一句话"和"给模型换个大脑"是两件严格分开的事：前者必须先记进日志，后者才允许在请求组装时临时调整。这条红线由 `invariant.ts` 强制校验（见第六节）。
 
 ## 五、防御式容错：三层容器化
 
-回合流跑在插件世界里，任何 waterfall/serial 监听器、任何 provider、任何工具都可能抛异常或永不返回。`dsh` 的对策是**分层容器化**——把每一层可能的爆炸都圈在一个"隔间"里，不让它蔓延，而不是让异常一路冒泡炸掉整个 agent。这有点像船的水密舱：某一舱进水，关上舱门，船照样航行。
+回合流跑在插件世界里，任何 waterfall/serial 监听器、任何 provider、任何工具都可能抛异常或永不返回。`dsh` 的对策是**分层容器化**——把每一层可能的爆炸都圈在一个"隔间"里，不让它蔓延，而不是让异常一路冒泡炸掉整个 agent。这有点像船的水密舱：某一舱进水，关上舱门，船照样航行。在"插件/provider/工具都是第三方且可热插拔"的语境下，这套重容错不是过度设计，而是被写成了仓库级纪律——`AGENTS.md` 要求任何 lifecycle / concurrency / teardown 工作动手前先读 `docs/defensive-patterns.md`（`[verified]`）。
 
 **第一层：通知 emit 逐监听器隔离。** `agent/*` 里的 emit 类事件（`inserted`/`claimed`/`status`/`error` 等，都是"广播一声、不等回话"的通知）通过自建循环派发（`dispatch.ts:120-137`）：每个回调的同步 throw 与返回 promise 的 rejection 各自 `try/catch`、只记 `warn`，"通知不能否决生命周期推进，也不能饿死后来的观察者"。这是刻意绕开 Cordis 原生 emit 的做法——后者用 `Array.map` 挨个调监听器，其中一个同步 throw 就会让排在后面的监听器再也收不到通知（这就是所谓"饿死")。
 
@@ -213,13 +199,6 @@ flowchart TD
 
 取消恢复更细。`cancel(cause, options)`（`agent.ts:134-140`）默认清空 inbox 并 abort 活动信号；`keepInbox` 则保住待办、只中止当前回合——相当于"叫停当前这场接待，但排队等着的活儿先留着"。取消的因由是 TypeScript 强制的四种 `AgentCancelCause`（`user`/`parent`/`hook`/`disposed`，见 `core.md`；分别是用户主动、上级 agent 传导、钩子触发、拆卸销毁），持有者把它拷进 `AbortSignal.reason`，让"为什么被取消"一路可查。工具调度层（`tool-calls.ts`）对取消尤为讲究：中止会为"还没开跑的调用"补记一条合成的错误结果（`appendSkippedToolCall`，`tool-calls.ts:249-259`），保证 `tool/call`（发起调用）与 `tool/result`（调用结果）成对出现、回放时不缺胳膊少腿；而调度器自身失败则**不伪造结果**，保留已记的 `tool/call` 后上抛——该有结果的补齐，不该假装有结果的绝不编造。
 
-> **ratify-note · 这么重的防御式容错，是必要还是过度**
-> - 候选解释：A 分层容器化（现状）；B 让异常自然冒泡、由顶层统一兜底（更少代码）。
-> - 各自利弊：A 优——插件/provider/工具是第三方且可热插拔，单点故障不该让整个长会话崩溃或悬挂；落盘边界（turn/end、合成 tool/result）保证崩溃后仍可回放、可续接；缺——代码显著变重，三处 catch、latch、raceAbort 等增加理解成本。B 优——路径直、易读；缺——一个行为不良的 emit 监听器同步 throw 就能饿死状态更新（Cordis 原生 emit 的已知陷阱），一个悬挂的 provider 就能把 agent 永久钉住。
-> - 选定 & 理由：源码选 A，且这是仓库级纪律——`AGENTS.md` 要求"lifecycle/concurrency/teardown 工作前先读 `docs/defensive-patterns.md`"，`dispatch.ts` 注释直接点名要绕开 Cordis emit 的 `Array.map` 陷阱。在"AI 大规模并行写、插件皆第三方"的语境下，把容错做成制度是合理取舍。
-> - 证据等级：`[verified]`（`dispatch.ts:120-137`、`tool-calls.ts:1-12` 模块说明、`agent.ts:210-223`）；"必要性"判断含 `[inferred]` 成分（动机不可直证）。
-> - 残余风险：若半年后被证伪，最可能因这层容错掩盖了本该暴露的 bug——空吞的 `catch(_error){}` 依赖"已上报"前提，一旦某路径漏了上报，故障会静默。
-
 ## 六、请求可重构：不变量兜底
 
 回合流最硬的约束是"模型可见 ⟺ 已记录"——凡是模型能看到的内容，必定先在日志里有据可查，反之亦然，两边严格对等。`buildRequest`（`agent.ts:407-495`）把请求组装成一个 `deepFreeze` 的冻结对象（冻结 = 组装好后就不许再改，任何偷偷改动都会失败），并用 `markAgentLoopRequest` 打标；派生的历史来自 `session.deriveMessages()`。包自带的运行时不变量 `invariant.ts`（不变量 = 一条"任何时候都必须成立"的规则，自带校验、违反即报错）在 `llm/stream` 上 `prepend` 一个全局监听器，对每个 loop 构建的请求校验：必须冻结、必须带 live session id、日志里必须有 `step/start` 与 `request/header`，且 `JSON.stringify(options.messages)` 必须逐字等于 `deriveMessages()` 的派生结果，否则 `fail('log-reconstruction desync')`（`invariant.ts:39-42`）。这一步的意义是：把"日志是唯一真相"从一句口头约定，升格成一道代码强制执行的门禁——谁想绕过日志偷偷给模型塞话，请求发出前就会被当场拦下。
@@ -228,12 +207,7 @@ flowchart TD
 
 几处容易踩的边界，值得单独点名：pre-step 的 `enter` 决策是**权威**的——它说这一步带哪些消息就是哪些，被最终决策省略的 claimed 消息**保持移除**、不会自动回到 inbox（`core.md`），别指望"这条我没带上，它会自己排回队里"；`agent/request` **不能改消息**，想加模型可见上下文得用 `agent.inject()` 走日志通道；`agent/turn-stopping` 是 serial 且靠"重读 inbox"决定去留，监听器顺序不影响结果——反向的"提前结束工具循环"同样是数据驱动（工具结果带 `concludesTurn` 标记，一个工具就能宣布"这一回合到此为止"）。`request-error` 只在失败 step 关闭后、失败 turn 关闭前跑，返回 `{kind:'retry'}` 才重试，默认 `undefined` 让失败终结（`agent.ts:354-371`）；`dsh-compaction-basic`（上下文压缩插件）正是借这个窗口，在上下文溢出（对话太长、塞不进模型的窗口）时先裁剪历史、再开一个新的重试 turn（`agent-lifecycle.md`）——把"太长了"这种失败，就地变成"压一压再来一次"。
 
-> **ratify-note · 相比 Claude Code / Codex，这套回合流特别在哪**
-> - 候选解释：A 事件溯源 + 唯一可换 driver + 强不变量（dsh 现状）；B 传统"消息数组在内存里增长、循环直接读写"的 agent loop（多数开源 harness 的通行做法）。
-> - 各自利弊：A 优——请求 100% 从 append-only 日志派生并被不变量校验，fork/resume/回放/UI 全部从同一事件流导出，取消/失败都留痕可续；缺——概念开销大（turn/step/inbox/waterfall/scope），落地门槛高。B 优——直观、上手快；缺——历史即内存，回放与审计弱，跨请求语义（粘性 max-tokens、零 step turn）难表达。
-> - 选定 & 理由：dsh 选 A 与其"模型是灵魂、一切皆插件"主线一致——只有把回合流做成"事件的投影"，才能让 driver、provider、工具都可整体替换而不失一致性。社区亦公认其严格 JSON schema 与"研究味"是区别点（`全网调研` E 节，`[claimed]`）。
-> - 证据等级：dsh 侧 `[verified]`（`invariant.ts`、`agent.ts`）；竞品对比为 `[inferred]/[claimed]`，无逐字对照，措辞从弱。
-> - 残余风险：若竞品同样采用事件溯源（如某些 Codex 分支），则此"特别性"被稀释，区别退回到不变量强度与插件粒度。
+把这套回合流放到横向看：多数开源 harness 走的是"消息数组在内存里增长、循环直接读写"的老路，直观、上手快，但历史即内存、回放与审计弱，粘性 `max-tokens`、零 step turn 这类跨请求语义无处安放。dsh 反其道而行——请求 100% 从 append-only 日志派生并被不变量校验（`invariant.ts`、`agent.ts` `[verified]`），fork / resume / 回放 / UI 全部从同一事件流导出，取消与失败都留痕可续。这与它"模型是灵魂、一切皆插件"的主线是一件事的两面：只有把回合流做成"事件的投影"，driver、provider、工具才能整体替换而不失一致性。社区亦公认其严格 JSON schema 与"研究味"是区别点（`全网调研` E 节 `[claimed]`）；不过与竞品无逐字对照，此处措辞从弱。
 
 ## 八、小结与衔接
 

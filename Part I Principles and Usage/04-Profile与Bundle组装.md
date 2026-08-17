@@ -72,13 +72,6 @@ flowchart TD
 
 需要补一点：`composeProfile` 在 `overlays`（用户 `--patch` 那一层）之上还会程序化追加两条——若树里有 `agent-presets` 行，就追加一条把 shipped preset（随发行版一起带的内置 preset）根目录 patch 进去的 overlay（profile-boot.ts:159-167）；再根据 `DSH_TELEMETRY_DISABLED` 环境变量追加遥测开关 patch（profile-boot.ts:168）。这两条是 launcher 自己拥有的、盖在用户层之上的最后一笔修饰。
 
-> **ratify-note · 为什么用分层覆盖，而不是每种形态一份完整配置**
-> - 候选解释：A 分层 patch（现状）——共享核心一份，差异叠加；B 每 profile 一份自包含 `cordis.yml`；C 代码里 if/else 按 mode 拼装。
-> - 各自利弊：A 优在共享核心零重复、用户只改自己那几行、`--dump-config` 能离线复现；缺在 patch 整替 `config` 不深合并，profile 覆写要重述保留字段（app-boot/README.md:60）。B 优在每份自解释、无叠加心智负担；缺在核心 60+ 行复制多份、漂移风险高、用户微调要 fork 整文件。C 优在灵活；缺在组装逻辑埋进代码、无法离线 dump、违背"一切皆配置行"。
-> - 选定 & 理由：选 A。第一性上，harness 要"改一行换整块能力"，就必须让配置成为可叠加、可复现的数据；`composeEntries` 与 boot 走同一次 `applyEntryPatches`（profile.ts:405-420），保证 dump 与实跑不漂移，这是 B/C 都给不了的不变量。
-> - 证据等级：[verified]（profile-boot.ts:151；vendor/include/src/index.ts:58；profile.ts:413）。
-> - 残余风险 / pre-mortem：若半年后被证伪，最可能因"整替而非深合并"在 profile 数量增长后成为维护负担——用户为改一个字段被迫重述整个 `config`，催生出社区自建的深合并预处理层，架空官方分层语义。
-
 ## 四、实现细节：三个 bundle 各加什么
 
 `PROFILE_TEMPLATES` 把两个内置模板钉死（profile.ts:114-117）：`web = [dsh-base, dsh-web-app]`，`headless = [dsh-base, dsh-headless]`。可见两个模板都以 `dsh-base` 打底，只在第二个 bundle 上分道扬镳。名字不在模板里的 profile 用 `DEFAULT_PROFILE_BUNDLES = [dsh-base]` 起步（profile.ts:125），并要显式用 `dsh plugin` 命令创建。`loadProfile` 对每个 bundle 名做两锚解析（先在 dsh 安装目录找、找不到再去 profile 目录找），列出的包若没有 `dsh.bundle` 声明就 fail loud（直接报错停下，而不是默默略过）（profile.ts:388-397）。
@@ -168,27 +161,15 @@ flowchart TD
 
 ## 六、竞品/横向对比
 
-> **ratify-note · dsh 的分层组装 vs 主流 harness 的配置策略**
-> - 候选解释：A dsh 式"profile→bundle→patch 分层、运行树=可 dump 的数据"；B Claude Code/Codex 式"settings.json + 扁平 MCP/工具开关"；C 传统框架式"一份 config 文件 + 代码内条件分支"。
-> - 各自利弊：A 优在把"换整块能力"降为一次 provider/行替换、离线可复现、用户层与分发层解耦；缺在心智门槛高（要懂 Cordis entry 与 patch 语义）、整替不深合并。B 优在直观、上手快、生态工具多；缺在能力边界由宿主写死，替换核心组件通常要改代码或等官方支持 [claimed]。C 优在简单；缺在组装逻辑不可见、不可 dump。
-> - 选定 & 理由：就 dsh 的目标（"模型是灵魂、一切皆可替换插件"）而言 A 是自洽解——它把可替换性从"宿主给的开关"升维成"配置行的替换"，`--dump-config` 让这份可替换性可审计。这与社区把 dsh 的价值定位在"可替换性/生态"而非"绑定自家模型"一致（全网调研 D 节 [inferred]）。
-> - 证据等级：[verified]（dsh 侧机制：docs/architecture.md、profile-boot.ts）；[claimed]（B/C 竞品细节为二手口径）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因大多数用户其实只想要 B 那样的"几个开关"，dsh 的分层被感知为过度工程，真实使用退化为"照抄官方模板、从不改 patch"。
+主流 harness 的配置策略大致分两类：Claude Code / Codex 式的"settings.json + 扁平 MCP/工具开关"直观、上手快、生态工具多，但能力边界由宿主写死，替换核心组件通常要改代码或等官方支持；传统框架式"一份 config + 代码内条件分支"则简单，却让组装逻辑不可见、不可 dump `[claimed]`（B/C 竞品细节为二手口径）。dsh 的"profile→bundle→patch 分层、运行树=可 dump 的数据"就其"模型是灵魂、一切皆可替换插件"的目标而言是自洽解——它把可替换性从"宿主给的开关"升维成"配置行的替换"，`--dump-config` 让这份可替换性可离线审计；代价是心智门槛更高（要懂 Cordis entry 与 patch 语义）、且 patch 整替不深合并。这也与社区把 dsh 的价值定位在"可替换性/生态"而非"绑定自家模型"一致 `[verified]`（dsh 侧机制：docs/architecture.md、profile-boot.ts）。当然，若大多数用户其实只想要"几个开关"，dsh 的分层就可能被感知为过度工程、真实使用退化为"照抄官方模板、从不改 patch"。
 
 ## 七、仍存在的问题与局限
 
 三处已在 README 明记为 deferred 的边界，都源自组装机制本身：
 
-- **patch 整替、不深合并**（app-boot/README.md:60；base/README.md:20）。profile 覆写一行时必须重述它要保留的每个字段，否则没写到的字段会连带被清空。举个直觉例子：想只改 `config` 里的一个开关，却得把这行 `config` 的其余字段原样抄一遍，漏抄一个就丢一个。字段一多，覆写就变脆、易出错。
+- **patch 整替、不深合并**（app-boot/README.md:60；base/README.md:20）。profile 覆写一行时必须重述它要保留的每个字段，否则没写到的字段会连带被清空。举个直觉例子：想只改 `config` 里的一个开关，却得把这行 `config` 的其余字段原样抄一遍，漏抄一个就丢一个。字段一多，覆写就变脆、易出错。不过这更像刻意取舍而非缺陷：`applyEntryPatches` 只保留"整替顶层键 / insert"两条规则，才能守住"dump 等于 boot、移除 patch 能干净回退"这两个组装不变量，而深合并会同时威胁它们——README 也是把它列为"Known Limitations"（"there is no deep-merge layer"）而非 bug`[verified]`（vendor/include/src/index.ts:121-124；app-boot/README.md:60）。
 - **bare 包解析依赖 Loader 内部**（app-boot/README.md:57）。"bare 包"指像 `some-pkg` 这样只写包名、不带路径的写法。生产 bin 需要 Loader 的可选 native helper 才能把它定位到磁盘；一个自带模块解析的 in-process 调用方若没有这个 helper，就只能改用可解析的相对路径 / `file:` specifier。这给"想在任意环境里嵌入 dsh"添了一点不便。
 - **home 层对所有 profile 生效**。这是设计（它本就是机器级偏好），但也有副作用：一条写在 home `cordis.patch.yml` 里、你本只想影响 web 的 patch，会同时命中 headless。正确做法是把只针对某 profile 的改动放进 per-profile 层；可顺序上 per-profile 反而排在 home 之前（更低），所以一个"想被 home 覆盖"的 profile 默认值需要额外留个心。
-
-> **ratify-note · "整替不深合并"是不是设计缺陷**
-> - 候选解释：A 是刻意取舍（保持 patch 语义简单、可逆、可离线复现）；B 是待补的能力空洞（应加深合并层）。
-> - 各自利弊：A 优在 `applyEntryPatches` 只有"整替顶层键 / insert"两条规则，热重载能干净回退被移除的 patch（vendor/include/src/index.ts:44-52）；缺在覆写啰嗦。B 优在覆写简洁；缺在深合并的回退语义复杂——半合并状态如何在 HMR 中可逆是难题，且"某字段来自哪一层"变得难以 dump。
-> - 选定 & 理由：判为 A 刻意取舍而非缺陷。第一性上，dsh 的组装不变量是"dump 等于 boot、移除 patch 能干净回退"，深合并会同时威胁这两者；README 把它列为"Known Limitations"而非 bug，措辞是"there is no deep-merge layer"（陈述边界，非承认缺失）。
-> - 证据等级：[verified]（vendor/include/src/index.ts:121-124 的整替实现；app-boot/README.md:60 的 deferred 表述）。
-> - 残余风险 / pre-mortem：若被证伪，最可能因大型部署的 profile 覆写字段膨胀到不可维护，社区先行实现一个"合并预处理器"，倒逼官方把深合并纳入——届时需重新论证 HMR 可逆性。
 
 ## 小结与衔接
 

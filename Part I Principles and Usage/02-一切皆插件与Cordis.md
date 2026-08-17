@@ -172,6 +172,46 @@ flowchart LR
 - **vendored 源码不可随意改**。任何对 `vendor/*/src/` 的改动都必须在 `vendor/README.md` 的"Local modifications"里穷尽登记，pre-commit guard（`check-vendor-manifest.sh`）会拒绝未同步 manifest 的改动 `[verified]`（`vendor/CLAUDE.md`、ADR :15）。`tsconfig.json` 是唯一例外（为适配 monorepo 构建而重生成）。
 - **lint/strictness 门禁豁免 vendored**。vendored 包保留上游代码风格，其 tsconfig 本地放宽了较新的编译器标志 `[verified]`（ADR :27）。
 
+## DSH 与 Cordis 的关系（谁是底座、谁 vendored 谁、边界）
+
+前面几节反复出现"Cordis"和"dsh"两个名字，读到这里容易生出一个疑问：它俩到底谁托着谁？这一小节把这层关系一次讲清——谁是底座、谁把谁 vendored 进来、两者的职责边界画在哪。
+
+**底座关系：Cordis 在下，dsh 在上。** Cordis 本身是一套**通用**的 TypeScript 微内核插件框架，并不为 agent 而生——它是从聊天机器人框架 Koishi 的生态里抽象、独立出来的一层"插件怎么装卸组合"的底层机制，主要由作者 `@shigma` 推动（社区调研记其贡献占绝对多数，约 537/550 commits）`[claimed]`（`全网调研-社区认知地图.md` B 节）。dsh 把这套框架当**底座**：它以 vendored 源码方式收进 `vendor/`、pin 在 `cordis@4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`，并让每个 harness 包把它声明为 peerDependency `[verified]`（`vendor/README.md`，详见本章第三、四节）。也就是说，dsh 的每一颗插件都长在 Cordis 提供的那棵 `ctx` 树上。
+
+**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中已有一条即条目 15 被上游采纳、回合并为 Cordis 的 PR#41）`[verified]`（`vendor/README.md:30-50`）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节的 ratify-note）。
+
+**边界划分：Cordis 管"插件怎么装卸组合"，dsh 管"agent 怎么跑"。** 两者的职责可以干净地切开：
+
+- **Cordis 提供通用机制**——Context/Service（上下文即服务仓库）、fiber/effect（注册即可回滚的副作用）、loader（有序装配插件树）、HMR（热重载）等。这些机制里没有一个字提到"agent""模型""工具"，它们对任何插件化应用都成立。
+- **dsh 在其上叠加领域产品**——agent loop、工具注册表（`ctx.tools`）、会话日志（`ctx.sessions`）、能力接缝（Definition/Provider/Consumer 三角色）、模型适配器（`ctx.llm`）。这些才是"一个 agent harness"特有的东西，它们全部以 Cordis 插件的形式挂上底座。
+
+一句话记：**Cordis 回答"插件怎么装卸组合"，dsh 回答"agent 怎么跑"**；前者是通用底盘，后者是跑在底盘上的具体产品。
+
+**论文—框架—产品三角。** 把视野再拉远一层，这套东西其实站在三块基石上，且三块基石彼此指认：支撑"时空可组合性"范式的那篇论文（北大 × DeepSeek 合作，Tianyi Cui 为共同作者）给出理论 `[claimed]`；Cordis 是这套范式的一个通用**实现**；dsh 则是把 Cordis 用于 agent 场景的一个具体**应用**。一个耐人寻味的旁证是：Cordis 的官方文档甚至托管在 `deepseek-harness.github.io` 域名下 `[claimed]`（`全网调研-社区认知地图.md` B 节）——这条线索让"论文作者、框架作者、产品团队三者高度重叠"看起来很可能成立，但确切的人员与组织血缘仍难从公开信息坐实，故整体记为 `[inferred]`。
+
+<div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+flowchart TD
+  Paper["论文: 时空可组合性范式<br/>(北大 × DeepSeek, Tianyi Cui 共同作者) [claimed]"]
+  Koishi["Koishi: 聊天机器人框架生态"]
+  Cordis["Cordis: 通用 TS 微内核插件框架<br/>(@shigma 主导, ~537/550 commits) [claimed]"]
+  DSH["DeepSeek Harness (dsh): agent 产品"]
+
+  Koishi -. 抽象独立而来 [inferred] .-> Cordis
+  Paper -. 提供范式/理论 [inferred] .-> Cordis
+  Cordis -->|通用机制: Context/Service/fiber/effect/loader/HMR| DSH
+  DSH -. vendored + pin + rescope + 18 条本地修改 [verified] .-> Cordis
+  DSH -->|叠加领域产品: agent loop / tools / sessions / seam / llm| DSHOut["跑起来的 agent harness"]
+```
+
+图注：底座与血缘关系图。实线为已核实的依赖/叠加关系（dsh 把 Cordis 作底座，并 vendored 它 `[verified]`）；虚线为血缘性推断（Cordis 由 Koishi 生态抽象而来、论文提供范式 `[inferred]`）。此图区分了三件事：dsh 与 Cordis 是"产品叠在通用底座上"的**依赖**关系、dsh 单向 vendored Cordis 的**掌控**关系、以及论文/Koishi/Cordis/dsh 之间尚未完全坐实的**血缘**关系。
+
+</div>
+
+关于三者关系与血缘的更细追溯，可循以下交叉引用：横向的框架对比见 [Part III 第 21 章《参考底座 Cordis 深度对比》](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)；对 Cordis 本身的系统调研（尤其 Koishi / Cordis / dsh 三者关系）见 [Part V《Cordis 深度调研》第 29 章](../Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md)；支撑范式的论文全解见 [Part IV《时空可组合性论文全解》](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md)。
+
 ## 六、竞品/横向对比
 
 同类 harness（Claude Code / Codex CLI / Pi 等）多把"可扩展性"实现为**扩展点回调 / 钩子（hooks）+ 配置**，扩展被宿主内核调用——好比宿主是主厨、扩展是它偶尔叫来帮忙的临时工，主厨这个角色本身换不掉；而 dsh 把宿主本身也化成插件，扩展与内核在同一棵 Cordis 树上平权，连"主厨"这一格都是可替换的插件。

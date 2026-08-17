@@ -8,6 +8,7 @@
 - 🔧 [Part II 源码剖析](#part-ii-源码剖析)
 - 🧭 [Part III 对比与元](#part-iii-对比与元)（含 Ch21 参考底座 Cordis 深度对比）
 - 📕 [Part IV 论文研究](#part-iv-论文研究)（时空可组合性论文全解 + 论文↔dsh 映射）
+- 🧬 [Part V Cordis 深度调研](#part-v-cordis-深度调研)（对 cordiverse/cordis 单独跑一遍深度解析 + 三者关系）
 - 📘 [官方文档对照](Appendix/官方文档对照.md) · 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md)
 - 📎 [Appendix 附录](Appendix/)
 
@@ -68,6 +69,19 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 |---|---|---|
 | 22 | [时空可组合性论文全解](Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) | 88 页正式版逐节精读：全章节覆盖 + 2 图 2 表 + 10 算法 + 18 定理 + 抽象总结（用 paper-research 工作流产出、`verify-report` 通过） |
 | 23 | [论文与 dsh 映射](Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md) | 论文范式 ↔ dsh 源码逐条映射（可逆 effect/reactive coeffect/生命周期/统一 context） |
+
+### Part V Cordis 深度调研
+
+对 dsh 的底座框架 [cordiverse/cordis](https://github.com/cordiverse/cordis) 单独跑一遍源码深度解析（Shigma 主导 537/550 commits，4 年演进）。
+
+| 章 | 标题 | 提要 |
+|---|---|---|
+| 24 | [Cordis 总览与血缘](Part%20V%20Cordis%20Deep%20Dive/24-Cordis总览与血缘.md) | 元框架定位 + Koishi 血缘（git 实证同源）+ 9 包/9 模块 + dsh 关系锚点 |
+| 25 | [Context 与 Service 模型](Part%20V%20Cordis%20Deep%20Dive/25-Context与Service模型.md) | ctx 容器 / Service / registry / reflect Proxy / inject |
+| 26 | [Fiber 与可逆 effect](Part%20V%20Cordis%20Deep%20Dive/26-Fiber与可逆effect.md) | fiber 生命周期状态机 + epoch 驱动 + ctx.effect 反序回滚 |
+| 27 | [事件系统](Part%20V%20Cordis%20Deep%20Dive/27-事件系统.md) | emit/waterfall/serial/parallel/bail；现役派发用 `Reflect.apply` |
+| 28 | [Loader 与 HMR](Part%20V%20Cordis%20Deep%20Dive/28-Loader与HMR.md) | 声明式配置树装配 + 事务式热重载 + dsh profile/bundle 呼应 |
+| 29 | [Cordis · Koishi · dsh 关系](Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md) | 血缘链 + 作者线 + 边界划分 + 论文—框架—产品三角 |
 
 ### Appendix 附录
 

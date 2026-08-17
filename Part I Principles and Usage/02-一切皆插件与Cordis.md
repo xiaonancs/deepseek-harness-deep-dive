@@ -103,6 +103,8 @@ sequenceDiagram
 
 </div>
 
+> **↔ 论文对应**：这里的 "Registrations are effects" 与 disposer 反序卸载，在《时空可组合性》论文里被形式化为**可逆 effect**——每次 context 变换都携带显式逆元，由 effect context $\partial\Gamma=(\gamma,\varphi)$ 里的 accumulator $\varphi$ 追踪（track），卸载即一次 recover（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §3.1，Def.2/3/6）。disposer 的"逆序（LIFO）运行"正对应论文 Thm.16：组件内一串 effect 按 LIFO 反转、无需任何前提即精确恢复 `[verified]`。
+
 ### Service 子类与 Context 树
 
 `Service` 是一个抽象类，子类在构造器里 `super(ctx, name)`，name 缺省取静态 `provide` 字段 `[verified]`（`vendor/cordis/src/service.ts:11,42-43`）。一个 service 实例挂载后就占据它的 `ctx.<key>`，成为其他插件按 key 可寻的能力——相当于"入职即占了那个工位"，别人此后按工位号来找它。`docs/architecture.md` 的"Core packages"表把这层映射列得很清楚：`core/session` 拥有 `ctx.sessions`、`core/tools` 拥有 `ctx.tools`、`core/agent-loop` 拥有 `ctx.agentLoop` 等 `[verified]`（`docs/architecture.md:43-51`）。

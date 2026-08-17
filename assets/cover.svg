@@ -10,15 +10,12 @@
   <linearGradient id="wireH" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0" stop-color="#8a6a1f"/><stop offset="0.5" stop-color="#f6e7b0"/><stop offset="1" stop-color="#c79a3c"/>
   </linearGradient>
-  <linearGradient id="topcore" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#fbf3d8"/><stop offset="1" stop-color="#f0dc9c"/>
-  </linearGradient>
-  <linearGradient id="topface" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/>
-  </linearGradient>
+  <linearGradient id="topcore" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf3d8"/><stop offset="1" stop-color="#f0dc9c"/></linearGradient>
+  <linearGradient id="topface" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/></linearGradient>
+  <marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6z" fill="#c79a3c"/></marker>
 </defs>
 <rect width="1400" height="468" fill="url(#bg)"/>
-<g fill="#9aa3b2" fill-opacity="0.16">
+<g fill="#9aa3b2" fill-opacity="0.15">
 <circle cx="0" cy="0" r="1"/>
 <circle cx="28" cy="0" r="1"/>
 <circle cx="56" cy="0" r="1"/>
@@ -871,101 +868,133 @@
 <circle cx="1372" cy="448" r="1"/>
 </g>
 <g>
-<path d="M0 92 H120 L150 122 H320" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M0 200 H70 L100 170 H230 L255 195 H360" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M0 330 H90 L120 360 H250" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M40 428 H180 L205 403 H330" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M1400 66 H1250 L1220 96 H1120" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M1400 300 H1300 L1270 270 H1180" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<path d="M1400 400 H1320 L1295 375 H1210" fill="none" stroke="url(#wireH)" stroke-opacity="0.7" stroke-width="1.1"/>
-<rect x="117.5" y="89.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="147.5" y="119.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="317.5" y="89.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="227.5" y="167.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="357.5" y="192.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="247.5" y="327.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="327.5" y="400.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="177.5" y="425.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="1117.5" y="93.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="1177.5" y="267.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
-<rect x="1207.5" y="372.5" width="5" height="5" rx="1" fill="#c79a3c" fill-opacity="0.85"/>
+<path d="M0 88 H110 L140 118 H300" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M0 210 H70 L100 180 H230" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M0 340 H90 L120 368 H250" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M40 430 H170 L196 404 H320" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M1400 60 H1250 L1220 90 H1120" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M1400 300 H1300 L1270 272 H1180" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<path d="M1400 408 H1320 L1296 384 H1210" fill="none" stroke="url(#wireH)" stroke-opacity="0.6" stroke-width="1.1"/>
+<rect x="107.7" y="85.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="137.7" y="115.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="297.7" y="85.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="227.7" y="177.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="247.7" y="365.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="317.7" y="401.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="1117.7" y="87.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="1177.7" y="269.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
+<rect x="1207.7" y="381.7" width="4.6" height="4.6" rx="1" fill="#c79a3c" fill-opacity="0.8"/>
 </g>
-<g font-family="ui-monospace,Menlo,Consolas,monospace" fill="#8a94a6">
-<text x="70" y="60" font-size="15" opacity="0.26" transform="rotate(-6 70 60)">cordis.yml</text>
-<text x="150" y="250" font-size="13" opacity="0.26" transform="rotate(-6 150 250)">ctx.effect()</text>
-<text x="60" y="300" font-size="13" opacity="0.26" transform="rotate(-6 60 300)">waterfall(next)</text>
-<text x="250" y="410" font-size="14" opacity="0.26" transform="rotate(-6 250 410)">agent-loop</text>
-<text x="120" y="150" font-size="12" opacity="0.26" transform="rotate(-6 120 150)">everything is a plugin</text>
-<text x="40" y="360" font-size="12" opacity="0.26" transform="rotate(-6 40 360)">SessionEvent</text>
-<text x="640" y="40" font-size="13" opacity="0.26" transform="rotate(-6 640 40)">deriveMessages()</text>
-<text x="900" y="432" font-size="13" opacity="0.26" transform="rotate(-6 900 432)">provider swap</text>
-<text x="1210" y="140" font-size="12" opacity="0.26" transform="rotate(-6 1210 140)">ctx.llm</text>
-<text x="1250" y="360" font-size="12" opacity="0.26" transform="rotate(-6 1250 360)">capability seam</text>
+<g font-family="ui-monospace,Menlo,Consolas,monospace" fill="#8a7a4a">
+<text x="60" y="58" font-size="15" opacity="0.28" transform="rotate(-5 60 58)">∂Γ := Γ × (Γ→Γ)</text>
+<text x="150" y="250" font-size="13" opacity="0.28" transform="rotate(-5 150 250)">ctx.effect()</text>
+<text x="56" y="300" font-size="13" opacity="0.28" transform="rotate(-5 56 300)">revertible effect</text>
+<text x="250" y="412" font-size="13" opacity="0.28" transform="rotate(-5 250 412)">reactive coeffect</text>
+<text x="120" y="150" font-size="12" opacity="0.28" transform="rotate(-5 120 150)">Γ∞ := μΓ. Γ×(Γ→Γ)×Σ</text>
+<text x="40" y="360" font-size="12" opacity="0.28" transform="rotate(-5 40 360)">σ |= d</text>
+<text x="300" y="92" font-size="12" opacity="0.28" transform="rotate(-5 300 92)">cordis.yml</text>
+<text x="210" y="342" font-size="12" opacity="0.28" transform="rotate(-5 210 342)">notify → activating</text>
+<text x="150" y="196" font-size="12" opacity="0.28" transform="rotate(-5 150 196)">f ∘ g  (LIFO φ⁻¹)</text>
+<text x="628" y="40" font-size="13" opacity="0.28" transform="rotate(-5 628 40)">effect : Γ → Γ × (Γ→Γ)</text>
+<text x="900" y="432" font-size="12" opacity="0.28" transform="rotate(-5 900 432)">provider swap</text>
+<text x="1170" y="140" font-size="12" opacity="0.28" transform="rotate(-5 1170 140)">Preservation · Progress · Confluence</text>
+<text x="1210" y="352" font-size="12" opacity="0.28" transform="rotate(-5 1210 352)">L-Reload / L-Unload</text>
 </g>
-<polygon points="1000.0,152.6 1312.0,313.8 1000.0,475.0 688.0,313.8" fill="none" stroke="url(#wire)" stroke-opacity="0.30" stroke-width="1.1"/>
-<polygon points="1000.0,130.5 1312.0,291.7 1000.0,452.9 688.0,291.7" fill="none" stroke="url(#wire)" stroke-opacity="0.48" stroke-width="1.1"/>
-<polygon points="1000.0,110.1 1312.0,271.3 1000.0,432.5 688.0,271.3" fill="none" stroke="url(#wire)" stroke-opacity="0.66" stroke-width="1.1"/>
-<polygon points="1000.0,94.8 1312.0,256.0 1000.0,417.2 688.0,256.0" fill="#f7f8fb" fill-opacity="0.7" stroke="url(#wire)" stroke-width="2"/>
-<g stroke="url(#wireH)" stroke-opacity="0.28" stroke-width="0.9">
-<line x1="1036.0" y1="113.4" x2="724.0" y2="274.6"/>
-<line x1="964.0" y1="113.4" x2="1276.0" y2="274.6"/>
-<line x1="1096.0" y1="144.4" x2="784.0" y2="305.6"/>
-<line x1="904.0" y1="144.4" x2="1216.0" y2="305.6"/>
-<line x1="1156.0" y1="175.4" x2="844.0" y2="336.6"/>
-<line x1="844.0" y1="175.4" x2="1156.0" y2="336.6"/>
-<line x1="1216.0" y1="206.4" x2="904.0" y2="367.6"/>
-<line x1="784.0" y1="206.4" x2="1096.0" y2="367.6"/>
-<line x1="1276.0" y1="237.4" x2="964.0" y2="398.6"/>
-<line x1="724.0" y1="237.4" x2="1036.0" y2="398.6"/>
+<polygon points="980.0,143.0 1271.2,293.8 980.0,444.6 688.8,293.8" fill="none" stroke="url(#wire)" stroke-opacity="0.11" stroke-width="1.1"/>
+<polygon points="980.0,120.9 1271.2,271.7 980.0,422.5 688.8,271.7" fill="none" stroke="url(#wire)" stroke-opacity="0.20" stroke-width="1.1"/>
+<polygon points="980.0,100.5 1271.2,251.3 980.0,402.1 688.8,251.3" fill="none" stroke="url(#wire)" stroke-opacity="0.29" stroke-width="1.1"/>
+<polygon points="980.0,85.2 1271.2,236.0 980.0,386.8 688.8,236.0" fill="#f7f8fb" fill-opacity="0.65" stroke="url(#wire)" stroke-width="1.8"/>
+<g stroke="url(#wireH)" stroke-opacity="0.24" stroke-width="0.9">
+<line x1="1013.6" y1="102.6" x2="722.4" y2="253.4"/>
+<line x1="946.4" y1="102.6" x2="1237.6" y2="253.4"/>
+<line x1="1069.6" y1="131.6" x2="778.4" y2="282.4"/>
+<line x1="890.4" y1="131.6" x2="1181.6" y2="282.4"/>
+<line x1="1125.6" y1="160.6" x2="834.4" y2="311.4"/>
+<line x1="834.4" y1="160.6" x2="1125.6" y2="311.4"/>
+<line x1="1181.6" y1="189.6" x2="890.4" y2="340.4"/>
+<line x1="778.4" y1="189.6" x2="1069.6" y2="340.4"/>
+<line x1="1237.6" y1="218.6" x2="946.4" y2="369.4"/>
+<line x1="722.4" y1="218.6" x2="1013.6" y2="369.4"/>
 </g>
 <g>
-<line x1="1000.0" y1="254.6" x2="1120.0" y2="192.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="1060.0" cy="223.6" r="2.6" fill="#c79a3c"/>
-<line x1="1000.0" y1="254.6" x2="880.0" y2="192.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="940.0" cy="223.6" r="2.6" fill="#c79a3c"/>
-<line x1="1000.0" y1="254.6" x2="1120.0" y2="316.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="1060.0" cy="285.6" r="2.6" fill="#c79a3c"/>
-<line x1="1000.0" y1="254.6" x2="880.0" y2="316.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="940.0" cy="285.6" r="2.6" fill="#c79a3c"/>
-<line x1="1000.0" y1="254.6" x2="1000.0" y2="130.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="1000.0" cy="192.6" r="2.6" fill="#c79a3c"/>
-<line x1="1000.0" y1="254.6" x2="1000.0" y2="378.6" stroke="url(#wireH)" stroke-width="1.6"/>
-<circle cx="1000.0" cy="316.6" r="2.6" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="1092.0" y2="176.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="1036.0" cy="205.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="868.0" y2="176.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="924.0" cy="205.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="1092.0" y2="292.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="1036.0" cy="263.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="868.0" y2="292.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="924.0" cy="263.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="980.0" y2="118.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="980.0" cy="176.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="980.0" y2="350.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="980.0" cy="292.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="756.0" y2="234.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="868.0" cy="234.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="234.6" x2="1204.0" y2="234.6" stroke="url(#wireH)" stroke-width="1.5"/>
+<circle cx="1092.0" cy="234.6" r="2.4" fill="#c79a3c"/>
+<line x1="980.0" y1="350.6" x2="1050.0" y2="420.6" stroke="#9a751f" stroke-width="1.6" stroke-dasharray="6 5"/>
 </g>
-<polygon points="947.2,116.4 1000.0,143.6 1000.0,159.3 947.2,132.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1052.8,116.4 1000.0,143.6 1000.0,159.3 1052.8,132.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1000.0,89.1 1052.8,116.4 1000.0,143.6 947.2,116.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
-<polygon points="1067.2,178.4 1120.0,205.6 1120.0,221.3 1067.2,194.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1172.8,178.4 1120.0,205.6 1120.0,221.3 1172.8,194.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1120.0,151.1 1172.8,178.4 1120.0,205.6 1067.2,178.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
-<polygon points="827.2,178.4 880.0,205.6 880.0,221.3 827.2,194.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="932.8,178.4 880.0,205.6 880.0,221.3 932.8,194.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="880.0,151.1 932.8,178.4 880.0,205.6 827.2,178.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
-<polygon points="947.2,240.4 1000.0,267.6 1000.0,283.3 947.2,256.0" fill="#e6d5a0" stroke="url(#wire)" stroke-width="1.3"/><polygon points="1052.8,240.4 1000.0,267.6 1000.0,283.3 1052.8,256.0" fill="#efe2b8" stroke="url(#wire)" stroke-width="1.3"/><polygon points="1000.0,213.1 1052.8,240.4 1000.0,267.6 947.2,240.4" fill="url(#topcore)" stroke="url(#wire)" stroke-width="2.2"/>
-<polygon points="1067.2,302.4 1120.0,329.6 1120.0,345.3 1067.2,318.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1172.8,302.4 1120.0,329.6 1120.0,345.3 1172.8,318.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1120.0,275.1 1172.8,302.4 1120.0,329.6 1067.2,302.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
-<polygon points="827.2,302.4 880.0,329.6 880.0,345.3 827.2,318.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="932.8,302.4 880.0,329.6 880.0,345.3 932.8,318.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="880.0,275.1 932.8,302.4 880.0,329.6 827.2,302.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
-<polygon points="947.2,364.4 1000.0,391.6 1000.0,407.3 947.2,380.0" fill="#d4d9e1" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1052.8,364.4 1000.0,391.6 1000.0,407.3 1052.8,380.0" fill="#dfe3ea" stroke="url(#wire)" stroke-width="0.8"/><polygon points="1000.0,337.1 1052.8,364.4 1000.0,391.6 947.2,364.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.3"/>
+<polygon points="933.0,104.4 980.0,128.7 980.0,144.4 933.0,120.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1027.0,104.4 980.0,128.7 980.0,144.4 1027.0,120.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="980.0,80.0 1027.0,104.4 980.0,128.7 933.0,104.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="1045.0,162.4 1092.0,186.7 1092.0,202.4 1045.0,178.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1139.0,162.4 1092.0,186.7 1092.0,202.4 1139.0,178.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1092.0,138.0 1139.0,162.4 1092.0,186.7 1045.0,162.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="821.0,162.4 868.0,186.7 868.0,202.4 821.0,178.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="915.0,162.4 868.0,186.7 868.0,202.4 915.0,178.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="868.0,138.0 915.0,162.4 868.0,186.7 821.0,162.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="933.0,220.4 980.0,244.7 980.0,260.4 933.0,236.0" fill="#e6d5a0" stroke="url(#wire)" stroke-width="1.3"/><polygon points="1027.0,220.4 980.0,244.7 980.0,260.4 1027.0,236.0" fill="#efe2b8" stroke="url(#wire)" stroke-width="1.3"/><polygon points="980.0,196.0 1027.0,220.4 980.0,244.7 933.0,220.4" fill="url(#topcore)" stroke="url(#wire)" stroke-width="2.2"/>
+<polygon points="709.0,220.4 756.0,244.7 756.0,260.4 709.0,236.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="803.0,220.4 756.0,244.7 756.0,260.4 803.0,236.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="756.0,196.0 803.0,220.4 756.0,244.7 709.0,220.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="1157.0,220.4 1204.0,244.7 1204.0,260.4 1157.0,236.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1251.0,220.4 1204.0,244.7 1204.0,260.4 1251.0,236.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1204.0,196.0 1251.0,220.4 1204.0,244.7 1157.0,220.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="1045.0,278.4 1092.0,302.7 1092.0,318.4 1045.0,294.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1139.0,278.4 1092.0,302.7 1092.0,318.4 1139.0,294.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1092.0,254.0 1139.0,278.4 1092.0,302.7 1045.0,278.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="821.0,278.4 868.0,302.7 868.0,318.4 821.0,294.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="915.0,278.4 868.0,302.7 868.0,318.4 915.0,294.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="868.0,254.0 915.0,278.4 868.0,302.7 821.0,278.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<polygon points="933.0,336.4 980.0,360.7 980.0,376.4 933.0,352.0" fill="#b3b9c3" stroke="url(#wire)" stroke-width="0.7"/><polygon points="1027.0,336.4 980.0,360.7 980.0,376.4 1027.0,352.0" fill="#c2c7d0" stroke="url(#wire)" stroke-width="0.7"/><polygon points="980.0,312.0 1027.0,336.4 980.0,360.7 933.0,336.4" fill="url(#topface)" stroke="url(#wire)" stroke-width="1.2"/>
+<rect x="1004.0" y="406.6" width="92" height="26" rx="13" fill="#ffffff" stroke="#9a751f" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="1050.0" y="424.6" text-anchor="middle" font-size="12" font-weight="700" fill="#9a751f" font-family="ui-monospace,Menlo,monospace">Remote · E2B</text>
 <g font-family="ui-monospace,Menlo,Consolas,monospace">
-<rect x="959.3" y="206.4" width="81.4" height="26.0" rx="13.0" fill="#f3d98a" stroke="url(#wire)" stroke-width="1.6"/>
-<text x="1000.0" y="223.4" text-anchor="middle" font-size="16" font-weight="700" fill="#2a1e05">Cordis</text>
-<rect x="1071.6" y="148.4" width="96.8" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="1120.0" y="161.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">AGENT LOOP</text>
-<rect x="850.8" y="148.4" width="58.4" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="880.0" y="161.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">TOOLS</text>
-<rect x="1067.8" y="272.4" width="104.5" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="1120.0" y="285.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">SESSION LOG</text>
-<rect x="843.1" y="272.4" width="73.8" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="880.0" y="285.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">SANDBOX</text>
-<rect x="978.5" y="86.4" width="43.0" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="1000.0" y="99.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">LLM</text>
-<rect x="955.4" y="334.4" width="89.1" height="22.0" rx="11.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.2"/>
-<text x="1000.0" y="347.4" text-anchor="middle" font-size="12" font-weight="700" fill="#3a4150">CAP. SEAM</text>
+<rect x="943.1" y="187.4" width="73.8" height="24.0" rx="12.0" fill="#f3d98a" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="980.0" y="203.4" text-anchor="middle" font-size="15" font-weight="700" fill="#2a1e05">Cordis</text>
+<rect x="1048.9" y="133.4" width="86.2" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="1092.0" y="145.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">AGENT LOOP</text>
+<rect x="842.0" y="133.4" width="52.1" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="868.0" y="145.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">TOOLS</text>
+<rect x="1059.1" y="249.4" width="65.7" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="1092.0" y="261.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">SESSION</text>
+<rect x="835.1" y="249.4" width="65.7" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="868.0" y="261.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">SANDBOX</text>
+<rect x="960.8" y="75.4" width="38.5" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="980.0" y="87.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">LLM</text>
+<rect x="943.7" y="307.4" width="72.6" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="980.0" y="319.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">FS / PTY</text>
+<rect x="730.0" y="191.4" width="52.1" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="756.0" y="203.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">SKILL</text>
+<rect x="1184.8" y="191.4" width="38.5" height="20.0" rx="10.0" fill="#ffffff" stroke="url(#wire)" stroke-width="1.1"/>
+<text x="1204.0" y="203.4" text-anchor="middle" font-size="11" font-weight="700" fill="#3a4150">MCP</text>
 </g>
+<line x1="980" y1="75" x2="1271" y2="226" stroke="#c79a3c" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>
+<text x="1126" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f">时间维 · 可逆 effect（φ⁻¹ 回滚）</text>
+<line x1="970" y1="85" x2="679" y2="236" stroke="#c79a3c" stroke-width="1.4" marker-end="url(#ah)" opacity="0.85"/>
+<text x="964" y="161" text-anchor="middle" font-size="13" font-weight="700" fill="#9a751f" transform="rotate(-90 964 161)">空间维 · 响应式 coeffect（notify）</text>
+<line x1="1300.0" y1="46.0" x2="1340.0" y2="86.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
+<line x1="1340.0" y1="86.0" x2="1300.0" y2="126.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
+<line x1="1300.0" y1="126.0" x2="1260.0" y2="86.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
+<line x1="1260.0" y1="86.0" x2="1300.0" y2="46.0" stroke="#c79a3c" stroke-width="1.3" marker-end="url(#ah)" opacity="0.8"/>
+<circle cx="1300.0" cy="46.0" r="6" fill="#ffffff" stroke="url(#wire)" stroke-width="1.3"/>
+<text x="1300.0" y="36.0" text-anchor="middle" font-size="10" fill="#5b4a1f" font-family="ui-monospace,Menlo,monospace">Inactive</text>
+<circle cx="1340.0" cy="86.0" r="6" fill="#f3d98a" stroke="url(#wire)" stroke-width="1.3"/>
+<text x="1340.0" y="76.0" text-anchor="middle" font-size="10" fill="#5b4a1f" font-family="ui-monospace,Menlo,monospace">Reloading</text>
+<circle cx="1300.0" cy="126.0" r="6" fill="#ffffff" stroke="url(#wire)" stroke-width="1.3"/>
+<text x="1300.0" y="116.0" text-anchor="middle" font-size="10" fill="#5b4a1f" font-family="ui-monospace,Menlo,monospace">Active</text>
+<circle cx="1260.0" cy="86.0" r="6" fill="#f3d98a" stroke="url(#wire)" stroke-width="1.3"/>
+<text x="1260.0" y="76.0" text-anchor="middle" font-size="10" fill="#5b4a1f" font-family="ui-monospace,Menlo,monospace">Unloading</text>
+<text x="1300" y="144" text-anchor="middle" font-size="11" fill="#9a751f">component lifecycle</text>
 
   <g>
-    <rect x="72" y="120" width="50" height="50" rx="12" fill="none" stroke="url(#wire)" stroke-width="2.6"/>
-    <text x="97" y="156" text-anchor="middle" font-size="28" font-weight="800" fill="#20242c">D</text>
-    <text x="140" y="157" font-size="30" font-weight="600" fill="#c79a3c" letter-spacing="7">dsh</text>
-    <text x="70" y="238" font-size="66" font-weight="800" fill="#20242c">DeepSeek Harness</text>
-    <text x="72" y="306" font-size="66" font-weight="800" fill="#20242c">Source Analysis</text>
-    <text x="76" y="356" font-size="24" fill="#5b6472">源码深度解析 · Deep Dive into Agent-Harness Engineering</text>
-    <rect x="76" y="378" width="470" height="2.5" fill="url(#wireH)"/>
-    <text x="76" y="410" font-size="18" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · Cordis 时空可组合 · 能力接缝可替换</text>
+    <rect x="66" y="118" width="48" height="48" rx="12" fill="none" stroke="url(#wire)" stroke-width="2.6"/>
+    <text x="90" y="152" text-anchor="middle" font-size="27" font-weight="800" fill="#20242c">D</text>
+    <text x="130" y="153" font-size="29" font-weight="600" fill="#c79a3c" letter-spacing="7">dsh</text>
+    <text x="64" y="232" font-size="62" font-weight="800" fill="#20242c">DeepSeek Harness</text>
+    <text x="66" y="298" font-size="62" font-weight="800" fill="#20242c">Source Analysis</text>
+    <text x="70" y="346" font-size="22" fill="#5b6472">源码深度解析 · Deep Dive into Agent-Harness Engineering</text>
+    <rect x="70" y="366" width="470" height="2.5" fill="url(#wireH)"/>
+    <text x="70" y="396" font-size="16" fill="#7b8493" font-family="ui-monospace,Menlo,monospace">Everything is a Plugin · 时空可组合性 · 可逆 effect ⊕ 响应式 coeffect</text>
+    <text x="70" y="420" font-size="13" fill="#9a8a5a" font-family="ui-monospace,Menlo,monospace">Cordis 底座 · ∂Γ / Γ∞ · Preservation·Progress·Confluence</text>
   </g>
-<text x="1372" y="446" text-anchor="end" font-size="17" fill="#8a94a6" font-family="ui-monospace,Menlo,monospace">xiaonan.cs@gmail.com</text>
+<text x="1374" y="448" text-anchor="end" font-size="16" fill="#8a94a6" font-family="ui-monospace,Menlo,monospace">xiaonan.cs@gmail.com</text>
 <rect x="12" y="12" width="1376" height="444" rx="14" fill="none" stroke="url(#wire)" stroke-width="1.6" stroke-opacity="0.8"/>
 </svg>

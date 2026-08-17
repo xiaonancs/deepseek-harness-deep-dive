@@ -73,6 +73,8 @@ stateDiagram-v2
 
 **Loader 把 YAML 变成插件树,HMR 让它热更。** Loader 读一份 `cordis.yml`,声明式地把每一行(entry)挂成一个插件;HMR 监听源码与配置文件变化,改动时只重载受影响的子树,不重启进程。这两件事本身也是插件(`@cordisjs/plugin-loader`、`@cordisjs/plugin-hmr`),同样 vendored 在仓库里。
 
+> **↔ 论文对应**：本节的 `fiber`、`ctx.effect`、epoch 依赖追踪，在《时空可组合性》论文的实现章（§5）里逐字段对应理论构造——**Table 2**（理论↔实现对应）给出映射：一等 context $\Gamma_\infty$→`ctx`、$\mathrm{effect}_\Gamma$→`ctx.effect`、coeffect context $\Sigma/\Sigma^{iso}/\Sigma^{inter}$→`ctx[@@store]`/`[@@isolate]`/`[@@intercept]`（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-时空可组合性论文全解.md) §5，Table 2；逐条 dsh 映射另见 [Part IV 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)）。epoch 则是论文 §4 依赖满足性谓词 $\gamma\vDash d_n$ 的工程落地 `[verified]`。
+
 ## 三、`dsh` 如何采用 Cordis
 
 `dsh` 没有从 npm 装 Cordis,而是把 Cordis 内核及其 8 个配套包**整份源码复制进 `vendor/`**——连同 `cosmokit`、`schemastery`(配置校验)、`loader`、`include`、`group`、`timer`、`hmr`、`logger-console`,共 9 个 vendored 包 `[verified]`(`vendor/README.md` 清单表)。清单里逐一记着上游版本与 commit,例如 cordis 固定在 `4.0.0-rc.7`、commit `56b3d4f7…`,主体来自 `cordiverse/cordis` 的 `packages/core` `[verified]`(`vendor/README.md:17`)。

@@ -1,6 +1,6 @@
 # 第 29 章 · Cordis、Koishi 与 DeepSeek Harness 三者关系（收官）
 
-> 读到这里，你已经拆过 `dsh` 的 agent loop、会话溯源、能力接缝，也读过它脚下那块叫 Cordis 的微内核主板，还啃完了那篇把这套机制形式化的论文。剩下一个问题没被正面回答:**这三样东西——一个聊天机器人框架、一个通用内核、一个 AI 实验室的 agent 外壳——到底是什么关系?** 为什么一家顶级 AI 实验室会把自己的旗舰 agent harness 建在一个社区聊天机器人框架抽出来的内核上?本章作为 Part V 的收官,不再钻单个机制,而是把镜头拉到最远,把「血缘、作者、采用、论文、边界」这五条线一次性理清——读完你应能对任何人讲明白 `dsh`、Cordis、Koishi、那篇论文各自站在哪、彼此怎么连。
+> 读到这里，你已经拆过 `dsh` 的 agent loop、会话溯源、能力接缝，也读过它脚下那块叫 Cordis 的微内核主板，还啃完了那篇把这套机制形式化的论文。剩下一个问题没被正面回答:**这三样东西——一个聊天机器人框架、一个通用内核、一个 AI 实验室的 agent 外壳——到底是什么关系?** 为什么一家顶级 AI(Artificial Intelligence,人工智能)实验室会把自己的旗舰 agent harness 建在一个社区聊天机器人框架抽出来的内核上?本章作为 Part V 的收官,不再钻单个机制,而是把镜头拉到最远,把「血缘、作者、采用、论文、边界」这五条线一次性理清——读完你应能对任何人讲明白 `dsh`、Cordis、Koishi、那篇论文各自站在哪、彼此怎么连。
 >
 > 采用过程的技术细节(18 处本地修改逐条、门禁链路)已在 [第 21 章](../Part%20III%20Comparative%20Analysis/21-参考底座Cordis深度对比.md)讲透,本章只做**关系层的总结与对照**,不重复展开。证据分三档:`[verified]` 源码/LICENSE/git/官方 README 可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径未证实;承重判断均逐条标注证据等级、严守证据边界。
 
@@ -9,8 +9,8 @@
 先把最容易被说岔的部分定死。三者是一条**单向的抽象—采用链**,不是平行的三个项目:
 
 - **Koishi** 是起点——一个成熟的跨平台聊天机器人框架,带插件市场、HMR(热模块替换,即改代码不重启就生效)`[verified]`(全网调研已核实 koishi 官方 README)。它早年把「插件、服务、上下文」这套依赖注入机制打磨成熟。
-- **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来,成为一个领域中立的微内核框架,自述「A Meta-Framework of Spatiotemporal Composability」(Spatiotemporal Composability元框架)`[verified]`(`repo/cordis/README.md:5`)。所谓元框架,就是「用来搭框架的框架」:它自己不做具体业务,只提供组织插件、注入依赖、干净卸载的底座。
-- **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm 依赖装,而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`,再在其上特化出一个跑编码 agent 的外壳 `[verified]`(`vendor/README.md` 清单表)。
+- **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来,成为一个领域中立的微内核框架,自述「A Meta-Framework of Spatiotemporal Composability」(可直译为「一个具备时空可组合性的元框架」)`[verified]`(`repo/cordis/README.md:5`)。所谓元框架,就是「用来搭框架的框架」:它自己不做具体业务,只提供组织插件、注入依赖、干净卸载的底座。
+- **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm(Node Package Manager,Node 的包管理器与公共包仓库)依赖装,而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`(rc = release candidate,候选发布版,尚未正式发版)、rescope(改包名作用域,即把 `cordis` 改成带 `@deepseek-ai/` 前缀的私有包名)成 `@deepseek-ai/cordis`,再在其上特化出一个跑编码 agent 的外壳 `[verified]`(`vendor/README.md` 清单表)。
 
 「Cordis 抽象自 Koishi」这一步,两家 README 并未逐字互相点名,只能记为 `[inferred]`;但有一条**一手实锤**把它顶得很稳:论文 §4.3 直接写「**Koishi 的 plugin 就是本文说的 component**」,且说明 Koishi 建立在 Cordis 之上(Koishi 用 v3,论文形式化对应 v4)`[verified]`(第 23 章摘录 `:185`)。也就是说,「Koishi—Cordis 同源、Cordis 是更底层的那一层」这件事,连论文自己都承认了。
 
@@ -33,7 +33,7 @@ flowchart LR
 ```
 
 </div>
-<p>图 29-1 血缘链。同一套「插件 / 服务 / 上下文」DI 内核,先在 Koishi 里成熟,抽象成领域中立的 Cordis,再被 dsh 整份搬入并特化为 agent 底座。实线为 vendored 事实可证;虚线「抽象自 Koishi」为推断,但有论文 §4.3「plugin 即 component」一手侧证托底。</p>
+<p>图 29-1 血缘链。同一套「插件 / 服务 / 上下文」DI(dependency injection,依赖注入——由容器按名字把依赖送到插件手里,而非插件自己去创建)内核,先在 Koishi 里成熟,抽象成领域中立的 Cordis,再被 dsh 整份搬入并特化为 agent 底座。实线为 vendored 事实可证;虚线「抽象自 Koishi」为推断,但有论文 §4.3「plugin 即 component」一手侧证托底。</p>
 
 ## 二、作者线:Shigma 一人贯穿三者
 
@@ -71,7 +71,7 @@ flowchart TB
 
 ## 三、dsh 如何采用 Cordis(关系层对照)
 
-采用的技术细节(vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、回并上游 PR#41)第 21 章已逐条讲清。这里只从**关系层**给一张对照表,把「dsh 对 Cordis 做了什么、动机指向谁」一次看全:
+采用的技术细节(vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、回并上游 PR#41——PR 即 Pull Request,拉取请求,把一批改动提交给上游项目、请求合并)第 21 章已逐条讲清。这里只从**关系层**给一张对照表,把「dsh 对 Cordis 做了什么、动机指向谁」一次看全:
 
 | 动作 | 内容 | 与 Cordis 的关系 | 证据 |
 |---|---|---|---|
@@ -125,7 +125,7 @@ flowchart TB
 最后一条线,是那篇论文如何把三者钉成一个闭环三角。三个顶点各司其职:
 
 - **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性(可逆 effect,任何加载都能干净卸载)」与「空间可组合性(响应式 coeffect,依赖变化自动协调)」形式化,由北大×DeepSeek-AI 三人合著 `[verified]`(第 23 章 `:13`)。它形式化的对象正是 Cordis 的插件范式,§4.3 明说「Koishi 的 plugin 即本文的 component」,并把 Koishi/Cordis 作为存在性验证案例(§4.3、§5)`[verified]`(第 23 章 `:185`)。
-- **Cordis 是范式的实现**——一个真跑起来的Spatiotemporal Composability内核,自述就叫「A Meta-Framework of Spatiotemporal Composability」,与论文标题同一措辞 `[verified]`(`repo/cordis/README.md:5`)。
+- **Cordis 是范式的实现**——一个真正把「时空可组合性」跑起来的内核,自述就叫「A Meta-Framework of Spatiotemporal Composability」,与论文标题同一措辞 `[verified]`(`repo/cordis/README.md:5`)。
 - **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向(让 AI agent 在少人监督下连续生成/替换自身组件),而 dsh 恰是这样一个 harness,其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`(第 23 章 `:239`;dsh `packages/self-modification`)。
 
 三个顶点还共享同一套**文档与仓储基础设施**,这是最硬的一手佐证:Cordis 自己的 README 把 **Paper 指向 `github.com/cordiverse/paper`**(与 Cordis 同属 cordiverse 组织)、把 **Documentation 指向 `deepseek-harness.github.io`** `[verified]`(`repo/cordis/README.md:9-10`、`repo/cordis/packages/core/README.md:9-10`)。也就是说,Cordis 的文档就托管在 DeepSeek Harness 的站点上——底座与产品共用一个 github.io,这本身就是三者一体的证据。

@@ -6,7 +6,7 @@
 
 在"一切皆插件"的架构里（第 05 章），几乎所有东西都可替换，但**回合流的具体驱动只有一个实现**：`packages/core/agent-loop` 里的 `ReactLoopAgent`（`agent.ts:64`）。这里的"回合流"，指的就是那台把"用户说话→模型请求→工具执行→再请求"一圈圈转起来的引擎。它实现了 `agent/` 包声明的公开 `Agent` 契约（契约 = 一份只规定"能做哪些操作"、不规定"怎么做"的接口约定），是"harness 的默认产品循环"（`docs/subsystems/core.md`）。扩展插件只认这份抽象的 `agent` 契约、从不直接依赖 `agent-loop`，所以循环本身仍可整体换掉——就像家电只认插座标准、不认发电厂，换一套发电方式也不用改家电。
 
-这一层做的事，`docs/subsystems/core.md` 概括为"六个包一趟走完"：`agent-loop` 的 driver 认领一条排队的 prompt，在会话日志上开一个 turn，经 `system-prompt` 装配请求前缀、从日志派生历史，经 LLM 接缝流式取回响应，经工具注册表派发工具调用，再把每一条"模型可见事实"追加回日志——下一步就从它派生。这里的"事件溯源"（event-sourcing）思路，就是不在内存里维护一份会被随手改写的对话状态，而是把发生过的每件事按顺序记成一条条不可改的日志，需要什么状态都从日志重新算出来。一句话：**日志是唯一真相，请求是日志的投影。**
+这一层做的事，`docs/subsystems/core.md` 概括为"六个包一趟走完"：`agent-loop` 的 driver 认领一条排队的 prompt，在会话日志上开一个 turn，经 `system-prompt` 装配请求前缀、从日志派生历史，经 LLM（Large Language Model，大语言模型）接缝（seam，一层可插拔、可替换的能力接口约定，后面各章会反复出现）流式取回响应，经工具注册表派发工具调用，再把每一条"模型可见事实"追加回日志——下一步就从它派生。这里的"事件溯源"（event-sourcing）思路，就是不在内存里维护一份会被随手改写的对话状态，而是把发生过的每件事按顺序记成一条条不可改的日志，需要什么状态都从日志重新算出来。一句话：**日志是唯一真相，请求是日志的投影。**
 
 ## 二、turn 与 step：边界怎么划
 
@@ -25,7 +25,7 @@ turn/start
      append entered messages as user/message
      derive model history
      agent/request -> llm/stream -> assistant/chunk* -> assistant/message
-     tool/call* -> tools/pre -> tools/execute -> tools/post -> tool/result*
+     tool/call* -> tools/pre-execute -> tools/execute -> tools/post-execute -> tool/result*
      step/end
      tools owe another request, or next-step input arrived -> claim -> next step
   -> agent/turn-stopping
@@ -207,7 +207,7 @@ flowchart TD
 
 几处容易踩的边界，值得单独点名：pre-step 的 `enter` 决策是**权威**的——它说这一步带哪些消息就是哪些，被最终决策省略的 claimed 消息**保持移除**、不会自动回到 inbox（`core.md`），别指望"这条我没带上，它会自己排回队里"；`agent/request` **不能改消息**，想加模型可见上下文得用 `agent.inject()` 走日志通道；`agent/turn-stopping` 是 serial 且靠"重读 inbox"决定去留，监听器顺序不影响结果——反向的"提前结束工具循环"同样是数据驱动（工具结果带 `concludesTurn` 标记，一个工具就能宣布"这一回合到此为止"）。`request-error` 只在失败 step 关闭后、失败 turn 关闭前跑，返回 `{kind:'retry'}` 才重试，默认 `undefined` 让失败终结（`agent.ts:354-371`）；`dsh-compaction-basic`（上下文压缩插件）正是借这个窗口，在上下文溢出（对话太长、塞不进模型的窗口）时先裁剪历史、再开一个新的重试 turn（`agent-lifecycle.md`）——把"太长了"这种失败，就地变成"压一压再来一次"。
 
-把这套回合流放到横向看：多数开源 harness 走的是"消息数组在内存里增长、循环直接读写"的老路，直观、上手快，但历史即内存、回放与审计弱，粘性 `max-tokens`、零 step turn 这类跨请求语义无处安放。dsh 反其道而行——请求 100% 从 append-only 日志派生并被不变量校验（`invariant.ts`、`agent.ts` `[verified]`），fork / resume / 回放 / UI 全部从同一事件流导出，取消与失败都留痕可续。这与它"模型是灵魂、一切皆插件"的主线是一件事的两面：只有把回合流做成"事件的投影"，driver、provider、工具才能整体替换而不失一致性。社区亦公认其严格 JSON schema 与"研究味"是区别点（`全网调研` E 节 `[claimed]`）；不过与竞品无逐字对照，此处措辞从弱。
+把这套回合流放到横向看：多数开源 harness 走的是"消息数组在内存里增长、循环直接读写"的老路，直观、上手快，但历史即内存、回放与审计弱，粘性 `max-tokens`、零 step turn 这类跨请求语义无处安放。dsh 反其道而行——请求 100% 从 append-only 日志派生并被不变量校验（`invariant.ts`、`agent.ts` `[verified]`），fork / resume / 回放 / UI（User Interface，用户界面）全部从同一事件流导出，取消与失败都留痕可续。这与它"模型是灵魂、一切皆插件"的主线是一件事的两面：只有把回合流做成"事件的投影"，driver、provider、工具才能整体替换而不失一致性。社区亦公认其严格 JSON schema 与"研究味"是区别点（`全网调研` E 节 `[claimed]`）；不过与竞品无逐字对照，此处措辞从弱。
 
 ## 八、小结与衔接
 

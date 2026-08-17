@@ -89,7 +89,7 @@ fiber 怎么知道自己该不该激活？答案是 **epoch**——一个编码�
 
 `_setEpoch()`（`fiber.ts:399-413`）是驱动状态迁移的开关：新旧 epoch 相等就啥也不做（幂等）；否则更新 epoch，然后——**若 `inertia` 存在（正在迁移中），只记账不动作**（`fiber.ts:403`），把动作推迟到当前迁移结束；否则根据"从 INACTIVE 变为非 INACTIVE（激活）还是反之（失活）"，分别启动 `_reload()`（转 LOADING）或 `_unload()`（转 UNLOADING）。
 
-那 `_store` 又是谁填的？是 reactive coeffect 的"通知"端。`ReflectService.notify()`（`reflect.ts:205-227`）在某个服务实现变化时，扫描所有 fiber，对那些 `inject` 了该服务名的，调 `_checkImpl()` 重算 `_store`，再调 `_refresh()`。`_checkImpl()`（`fiber.ts:371-383`）还会跑该服务的 `check` 谓词——不满足就当作没有。于是形成完整闭环：**服务变化 → notify → checkImpl → refresh → setEpoch → reload/unload**。
+那 `_store` 又是谁填的？是 reactive coeffect（响应式 coeffect——coeffect 可粗略理解为 effect 的"对偶"：effect 是插件主动对外产生的副作用，coeffect 则是插件对外部环境的"索取/依赖"，"响应式"指这份依赖一旦被满足或撤销，框架会主动"推"通知过来，而不用插件自己轮询）的"通知"端。`ReflectService.notify()`（`reflect.ts:205-227`）在某个服务实现变化时，扫描所有 fiber，对那些 `inject` 了该服务名的，调 `_checkImpl()` 重算 `_store`，再调 `_refresh()`。`_checkImpl()`（`fiber.ts:371-383`）还会跑该服务的 `check` 谓词——不满足就当作没有。于是形成完整闭环：**服务变化 → notify → checkImpl → refresh → setEpoch → reload/unload**。
 
 > 打个比方：epoch 像一张"点名表"，把插件需要的每样东西现在由谁负责登记成一串编号。点名表一变，插件就知道"要么该开工了，要么该收摊了"——它自己不用去轮询谁来了谁走了。
 
@@ -120,7 +120,7 @@ sequenceDiagram
 
 ### 3.1 `ctx.effect()` 的契约
 
-`effect()` 是本文件的核心 API（`fiber.ts:275-340`）。它的契约一句话：**你交给我一个"产生副作用的函数"，我还你一个"撤销这个副作用的 disposer"**。传入的 `execute` 可以返回四种形态之一（`fiber.ts:229-273` 的 `_execute` 负责归一）：一个 disposer 函数、`null`（无副作用）、一个 `Promise<disposer>`、或一个（异步）迭代器逐个 yield disposer。这种多态让"同步注册、异步初始化、多步注册"都走同一条路。
+`effect()` 是本文件的核心 API（Application Programming Interface，应用编程接口，即对外公开的调用入口）（`fiber.ts:275-340`）。它的契约一句话：**你交给我一个"产生副作用的函数"，我还你一个"撤销这个副作用的 disposer"**。传入的 `execute` 可以返回四种形态之一（`fiber.ts:229-273` 的 `_execute` 负责归一）：一个 disposer 函数、`null`（无副作用）、一个 `Promise<disposer>`、或一个（异步）迭代器逐个 yield disposer。这种多态让"同步注册、异步初始化、多步注册"都走同一条路。
 
 每次 `effect()` 调用会：先 `assertActive()` 确认 fiber 没被销毁（`fiber.ts:224-227`，否则抛 `INACTIVE_EFFECT`）；建一个本地 `disposables` 数组收集本次 effect 内部产生的所有 disposer；跑 `_execute`；最后把一个 `wrapper`（带幂等保护的总 disposer）push 进 fiber 的 `_disposables`（`fiber.ts:338`）。
 

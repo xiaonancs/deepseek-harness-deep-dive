@@ -20,7 +20,7 @@
 
 | 维度 | 要求 | 静态设定退化为 | effect/coeffect 对应 |
 | --- | --- | --- | --- |
-| **temporal（时间维）** | 组件移除时，它对共享环境的修改必须被完整、安全地反转（追踪每次资源分配/事件注册/状态变更，有序回收） | 词法作用域（RAII、bracket pattern） | **effect**（可逆运行时变换 + 左逆） |
+| **temporal（时间维）** | 组件移除时，它对共享环境的修改必须被完整、安全地反转（追踪每次资源分配/事件注册/状态变更，有序回收） | 词法作用域（RAII，即 Resource Acquisition Is Initialization 资源获取即初始化；bracket pattern 括号包裹模式） | **effect**（可逆运行时变换 + 左逆） |
 | **spatial（空间维）** | 组件必须能以结构化、可验证的方式声明/发现/解析彼此依赖（管理依赖拓扑、随依赖变化协调生命周期） | 模块导入解析 | **coeffect**（响应式依赖解析） |
 
 **贡献→章节速查**：revertible effects（§3.1）确立 local temporal、reactive coeffects（§3.2）确立 local spatial、统一 $\Gamma_\infty$ + observational equivalence（§3.3）供 independence、动态组合演算 + 元理论（§4）推到系统级、Cordis + Koishi（§5）工程落地。
@@ -31,7 +31,7 @@
 2. **形式化 reactive coeffects（§3.2）**：组件把依赖声明为 specification，context 每次变化都按 activating / deactivating / neutral 通知组件，确立 local spatial composability。
 3. **统一 context 范式（§3.3）**：把 effect context 与 coeffect context 合成单一 context 类型 $\Gamma_\infty$，由 coeffect 上的 observational equivalence 赋予 effect 以 independence。
 4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把Spatiotemporal Composability从单组件推广到交错组件系统。
-5. **Cordis 实现 + Koishi 案例（§5）**：core library（effect tracking + coeffect resolution）+ declarative loader（config reconciliation + HMR），并以 4000+ 插件的 Koishi 生产系统验证。
+5. **Cordis 实现 + Koishi 案例（§5）**：core library（effect tracking + coeffect resolution）+ declarative loader（config reconciliation + HMR，Hot Module Replacement 热模块替换：文件改动后不重启进程、就地换掉受影响模块），并以 4000+ 插件的 Koishi 生产系统验证。
 
 ### 1.3 元信息表
 
@@ -60,7 +60,7 @@
 - **§4 A Calculus of Dynamic Composition**：4.1 component/fiber 七元组与 registry（Def.43–46）；4.2 base calculus（五规则）；4.3 transitions in progress（Withdrawal / Iteration / Asynchrony / Failure 四类精化，十条规则 = Table 1）；**4.4 metatheory 五定理**（Preservation Thm.59、Temporal = Recovery exactness Thm.61 + Terminal recovery Cor.62、Spatial = Ordering Thm.63 + Resolution coherence Thm.64、Progress Thm.66、Confluence Thm.73）。
 - **§5 Implementation & Case Study**：5.1 core library（Algorithm 1–6）、5.2 component loader（声明式配置 + reconciliation + HMR，Algorithm 7–10）、5.3 Koishi 案例（4000+ 插件，existence-and-adoption）。
 - **§6 Discussion**：6.1 System Boundary、6.2 Service Multiplexing、6.3 Access Control & Sandboxing、6.4 Language Independence、6.5 Mutual Dependencies、6.6 Dependency Typing & Versioning、6.7 Co-Design。
-- **§7 Related Work**：7.1 effect/coeffect 系统、7.2 编程范式（COP/AOP）、7.3 temporal、7.4 spatial。
+- **§7 Related Work**：7.1 effect/coeffect 系统、7.2 编程范式（COP 面向上下文编程 / AOP 面向切面编程；英文全称见 §3.6.2）、7.3 temporal、7.4 spatial。
 - **§8 Conclusion**：总结 + 把自演化 agent harness 列为下一个验证方向。
 
 **一句话动线**：把 effect 提为携左逆的可逆运行时变换、coeffect 提为响应式依赖，统一进 first-class context $\Gamma_\infty$，再由 component/fiber 演算与元理论（五定理）把「局部可逆 + 局部响应式」推广到系统级；Koishi 4000+ 插件作 existence-and-adoption 论证（非对照）。**局限性**：非对照评估；in-memory 状态默认不跨 reload 存活；依赖仅名义链接、缺版本/结构类型；循环依赖使涉事组件永久 inactive。
@@ -69,9 +69,9 @@
 
 如果要用最短的话把这篇 88 页论文抽成一条逻辑链，它是这样的：**动态组合（运行时装卸组件）之所以一直缺乏形式基础，是因为描述它的两个正交维度——temporal（时间维：卸载时环境要能被完整、安全地回退）与 spatial（空间维：组件间依赖要能被声明、发现、响应式解析）——各自的理论工具（effect 与 coeffect）此前都只活在编译期、词法固定作用域上。论文的全部创造性动作，是把这对已有的对偶结构整体「下沉」到运行时，并证明下沉后可组合性不再是开发者纪律，而成为一条条结构性定理。**
 
-**第一步——识别坐标轴。** 作者把「插件热插拔」「自演化 agent harness」「进程/服务级粗粒度替代」三个工程痛点，翻译成两个精确维度。temporal 在静态设定下退化为词法作用域（RAII / bracket pattern），spatial 退化为模块导入解析；而运行时装卸让两者都显著变难。关键洞察是：这两个维度恰好对应 PL 理论里已经存在半个世纪的一对对偶概念——effect（计算如何改变环境）与 coeffect（计算如何依赖环境）。
+**第一步——识别坐标轴。** 作者把「插件热插拔」「自演化 agent harness」「进程/服务级粗粒度替代」三个工程痛点，翻译成两个精确维度。temporal 在静态设定下退化为词法作用域（RAII / bracket pattern），spatial 退化为模块导入解析；而运行时装卸让两者都显著变难。关键洞察是：这两个维度恰好对应 PL（programming languages，编程语言）理论里已经存在半个世纪的一对对偶概念——effect（计算如何改变环境）与 coeffect（计算如何依赖环境）。
 
-**第二步——把 effect/coeffect 下沉为运行时机制。** effect 从「类型上的静态注解」变成 **revertible effect**：每个原子变换 $f$ 携带一个显式左逆 $g$（只要求 $g\circ f=\mathrm{id}$），由运行时 track 进 accumulator，卸载时结构性地按 LIFO 完整回收——「完整环境恢复」从此是系统不变式。coeffect 从「执行前定死的 context 校验」变成 **reactive coeffect**：依赖被声明为 specification $d$，context 每次变化都按满足性差分分类为 activating / deactivating / neutral，直接驱动生命周期转移。二者的技术接缝是：coeffect 的 `set` 操作本身就是一个 effect function（$\mathfrak E^*$），因而「写依赖」天然继承可逆性。
+**第二步——把 effect/coeffect 下沉为运行时机制。** effect 从「类型上的静态注解」变成 **revertible effect**：每个原子变换 $f$ 携带一个显式左逆 $g$（只要求 $g\circ f=\mathrm{id}$），由运行时 track 进 accumulator，卸载时结构性地按 LIFO（Last-In-First-Out，后进先出：最后装上的最先拆除，如同栈）完整回收——「完整环境恢复」从此是系统不变式。coeffect 从「执行前定死的 context 校验」变成 **reactive coeffect**：依赖被声明为 specification $d$，context 每次变化都按满足性差分分类为 activating / deactivating / neutral，直接驱动生命周期转移。二者的技术接缝是：coeffect 的 `set` 操作本身就是一个 effect function（$\mathfrak E^*$），因而「写依赖」天然继承可逆性。
 
 **第三步——统一进 first-class context。** 把 effect context 变递归并与 coeffect context $\Sigma$ 结合，得到唯一的运行时 context 类型 $\Gamma_\infty:=\mu\Gamma.\,\Gamma\times(\Gamma\to\Gamma)\times\Sigma$。全文最抽象也最关键的一步在此：由 coeffect 上的 **observational equivalence**（≃）供给 effect 以 **independence**——异键操作天然独立（Thm.40），公共键 commutative 则独立（Thm.42）。这就是「时空可组合」名字的由来：**用空间维（依赖键是否不同/可交换）的可观测等价，去解锁时间维（effect）的独立性**。
 
@@ -139,7 +139,7 @@ flowchart TB
 
 </td><td>
 
-作者把一个工程痛点（插件热插拔、agent 自改写）精准翻译成一对**已有理论词汇**（effect/coeffect），再指出这对词汇「只在编译期用」的空档——这是全文最漂亮的一步「问题重述」。它的说服力在于：动态组合不是新需求（OSGi、DI、HMR 都在做），缺的是**统一形式基础**。
+作者把一个工程痛点（插件热插拔、agent 自改写）精准翻译成一对**已有理论词汇**（effect/coeffect），再指出这对词汇「只在编译期用」的空档——这是全文最漂亮的一步「问题重述」。它的说服力在于：动态组合不是新需求（OSGi、DI（dependency injection，依赖注入）、HMR 都在做），缺的是**统一形式基础**。
 
 隐含假设：把「可逆」当作 temporal 的充要刻画。现实里不少 effect（如已发出的网络请求）不可逆，作者在 §6.1 才补边界，此处 Introduction 读起来略显理想化。
 
@@ -154,7 +154,7 @@ flowchart TB
 
 **effect 侧（§2.1）。** 在简单类型 λ 演算里判断 $\Gamma\vdash t:T$；**effect system** 把结果类型精化成"计算可能产生哪些副作用"，判断形如 $\Gamma\vdash t:T\,!\,\mathrm{effect}$。源头是 **Lucassen & Gifford**（引入区分 types/effects/regions 的 kinded 类型系统，为并行程序发现调度约束）。三条发展线：**monadic effects**——Moggi 用单子 $(T,\eta,\mu)$ 把 effectful 计算封为 $T(A)$（$\eta$ 抬纯值、$\mu$ 顺序化嵌套），Wadler 在 Haskell 普及，经典实例 Maybe/State/IO；**algebraic effects**——Plotkin & Power 证明代数操作决定单子，effect signature $\Sigma$ 声明一组操作（如 `get:()→S`、`put:S→()`），程序自由调用而不绑定解释；**effect handlers**——Plotkin & Pretnar 用带 delimited continuation $\kappa$ 的 handler 解释操作（`handle e with { op(v,κ) ↦ … }`，$\kappa$ 可被调用 0/1/多次，统一表达异常、协程、非确定），落地于 Koka / Eff / OCaml 5。
 
-**coeffect 侧（§2.2）。** 对偶地，**coeffect system** 精化的是 context 而非类型，判断形如 $\Gamma\vdash t:T\,!\,\mathrm{coeffect}$——context 被标注上"计算向环境索取什么"（资源、权限、依赖的服务）。**comonadic coeffects**——Uustalu & Vene 首倡用共单子 $(D,\varepsilon,\delta)$ 结构化 context 依赖（$\varepsilon:D(A)\to A$ 取当前值、$\delta:D(A)\to D(D(A))$ 复制 context 供嵌套访问；Environment 共单子 $D(X)=E\times X$ 建模对固定环境的依赖、Stream 共单子 $D(X)=\mathbb N\to X$ 建模对时序数据的依赖），Petricek 在此之上把 coeffect 提为"context 依赖的统一静态分析"。**graded coeffects**——用预序半环 $\mathcal S=(S,\le,+,\times,0,1)$ 作 coeffect 代数，为每个变量绑定标注用量（0 未用、1 线性、$n$ 有界、$\infty$ 无限制），$\times$ 顺序复合、$+$ 并行复合，支撑资源追踪/敏感度分析/信息流控制；Gaboardi 把它与 graded effects 统一。
+**coeffect 侧（§2.2）。** 对偶地，**coeffect system** 精化的是 context 而非类型，判断形如 $\Gamma\vdash t:T\,!\,\mathrm{coeffect}$——context 被标注上"计算向环境索取什么"（资源、权限、依赖的服务）。**comonadic coeffects**——Uustalu & Vene 首倡用共单子 $(D,\varepsilon,\delta)$ 结构化 context 依赖（$\varepsilon:D(A)\to A$ 取当前值、$\delta:D(A)\to D(D(A))$ 复制 context 供嵌套访问；Environment 共单子 $D(X)=E\times X$ 建模对固定环境的依赖、Stream 共单子 $D(X)=\mathbb N\to X$ 建模对时序数据的依赖），Petricek 在此之上把 coeffect 提为"context 依赖的统一静态分析"。**graded coeffects**——用预序半环（semiring，像自然数那样有加法与乘法、但不要求有减法/逆元的代数结构）$\mathcal S=(S,\le,+,\times,0,1)$ 作 coeffect 代数，为每个变量绑定标注用量（0 未用、1 线性、$n$ 有界、$\infty$ 无限制），$\times$ 顺序复合、$+$ 并行复合，支撑资源追踪/敏感度分析/信息流控制；Gaboardi 把它与 graded effects 统一。
 
 **对偶关系与"下沉"动机（§2.3）。** effect 描述"计算如何改环境"、coeffect 描述"环境如何约束计算"，恰对应动态可组合的两维：**temporal** 要 stateful effect 可逆（撤销一个变换 = 它得有逆元），**spatial** 要组件间依赖被声明并响应式管理（正是 coeffect 所捕获，管理 = 对着环境所供逐一解析）。但**经典系统都是静态工具**：effect 在词法固定作用域内追踪、由编译期 handler 讨清；coeffect 标注对着执行前定死的 context 校验。动态组合要求这些保证对"运行时才到/离场、且 context 持续演化"的组件成立——部署后加载的插件没有词法作用域可界定、运行时配置涌现的依赖没有编译期 context 可预知。**由此的视角转变**（也是全文的论文命题）：与其给静态类型系统加更多注解，不如**把 effect/coeffect 的概念结构 reify 成运行时可直接操作的类型**，在运行时动态地建立它们静态提供的保证——这正是 §3 把 typing context 变成 context type、把 effect 变成"变换 + 逆元"、把 coeffect 变成"携依赖信息的类型"的出发点。
 
@@ -191,12 +191,12 @@ flowchart TB
 作者用三个例子坐实「两维度都缺」：
 
 **① 插件系统 / VSCode（§1.2.1）**：
-- _Temporal 缺陷_：所有扩展跑在共享的 extension host 里，无法在运行时卸载单个扩展的代码；一旦 `activate` 执行过，禁用/卸载就要**重启整个 host**。装机量前 100 的扩展里 **87 个含可执行代码**（2026-06-09 取自 Marketplace），移除都需重启；`deactivate` 钩子只是进程终止时的优雅关闭回调，且把 effect 释放与创建分离，违反 locality of concern。
+- _Temporal 缺陷_：所有扩展跑在共享的 extension host 里，无法在运行时卸载单个扩展的代码；一旦 `activate` 执行过，禁用/卸载就要**重启整个 host**。装机量前 100 的扩展里 **87 个含可执行代码**（2026-06-09 取自 Marketplace），移除都需重启；`deactivate` 钩子只是进程终止时的优雅关闭回调，且把 effect 释放与创建分离，违反 locality of concern（关注点局部性：创建资源与清理资源的代码本该写在一处、成对出现，而不是散落两地靠人记得补写）。
 - _Spatial 缺陷_：虽有 `extensionDependencies`，但前 100 中**仅 7 个**声明了对非内置扩展的依赖；`getExtension(...).exports` 返回值**无类型**（默认 `any`），依赖方拿不到受检接口。
 
 **② 自演化 agent harness（§1.2.2）**：现代 AI agent 依赖运行时 harness（组合工具套件、管权限沙箱、维护会话状态、编排 subagent）。未来 harness 可能一边服务请求一边生成并部署对自身组件的修改；缺 temporal 会让每次自改写都全量重启、丢弃进程内状态（甚至可能禁用掉恢复所需的进程本身），缺 spatial 会让模块只能 ad hoc 适配依赖变化。
 
-**③ 粗粒度替代（§1.2.3）**：OS 在**进程**粒度给 temporal、容器编排在**服务**粒度给 spatial；代价是每次重启丢弃缓存/连接/中间计算（重建需数秒到数分钟）、需冗余副本维持可用性，且容器级编排无法表达共享地址空间内的组件依赖、还引入本可为本地调用的网络开销。
+**③ 粗粒度替代（§1.2.3）**：OS（operating system，操作系统）在**进程**粒度给 temporal、容器编排在**服务**粒度给 spatial；代价是每次重启丢弃缓存/连接/中间计算（重建需数秒到数分钟）、需冗余副本维持可用性，且容器级编排无法表达共享地址空间内的组件依赖、还引入本可为本地调用的网络开销。
 
 **结论（原文）**：两维度的缺失普遍存在于插件系统，且粒度失配呼唤一个「与组件同粒度」管理 effect 与依赖的组合抽象。
 
@@ -237,7 +237,7 @@ flowchart TB
 <tbody>
 <tr><td>
 
-核心建模：把一个 effect 建模为函数 $f:\Gamma\to\Gamma\times(\Gamma\to\Gamma)$——作用于当前 context，返回**被修改的 context** 以及**一个显式逆元**。提供逆元让 effect 可被反转，把逆元交回运行时让 effect 可被 track。Γ→Γ 在复合 ∘ 下构成幺半群（闭合=顺序复合仍是 effect、结合律=复合与括号无关、单位元= $\mathrm{id}_\Gamma$）。
+核心建模：把一个 effect 建模为函数 $f:\Gamma\to\Gamma\times(\Gamma\to\Gamma)$——作用于当前 context，返回**被修改的 context** 以及**一个显式逆元**。提供逆元让 effect 可被反转，把逆元交回运行时让 effect 可被 track。Γ→Γ 在复合 ∘ 下构成幺半群（monoid，一种"有结合律、有单位元、但不要求有逆元"的代数结构，最熟悉的例子是整数与加法、或字符串与拼接）——这里闭合=顺序复合两个 effect 仍是 effect、结合律=复合与括号无关、单位元= $\mathrm{id}_\Gamma$（什么都不改的变换）。
 
 **逆元的一侧性**：$g$ 是 $f$ 的**左逆**（约束是 $g\circ f$，绝不是 $f\circ g$）。成对变换带自己的乘法——
 
@@ -366,7 +366,7 @@ $e(\gamma)$ 返回"新 context $\delta$ + 本次施加处的逆元 $g$"；strict
 <tbody>
 <tr><td>
 
-作者把控制反转（IoC）/ 依赖注入建模为 **coeffect context**（Def.22）：给定值类型族 $\mathcal V:K\to\mathrm{Type}$，coeffect context 是依赖偏映射
+作者把控制反转（Inversion of Control，IoC：不由组件自己去 new 出依赖，而由外部容器把依赖"注入"进来）/ 依赖注入建模为 **coeffect context**（Def.22）：给定值类型族 $\mathcal V:K\to\mathrm{Type}$，coeffect context 是依赖偏映射
 
 $$\Sigma:=(k\!:\!K)\rightharpoonup\mathcal V_k$$
 
@@ -388,9 +388,9 @@ $$\sigma\vDash d:=\forall k\in d.\;k\in\mathrm{dom}(\sigma)$$
 
 最精巧的一处：**`set` 是 effect function（$\mathfrak E^*$）**——于是「写依赖」这件事天然继承 §3.1 的可逆性，coeffect 与 effect 在此对接，为 §3.3 的统一埋线。
 
-$\mathrm{notify}$ 的三态（activating/deactivating/neutral）是把 OSGi Declarative Services、iPOJO 的「服务出现/消失即激活/停用」提炼成一个**满足性谓词的差分**，比回调式 API 更可推理。
+$\mathrm{notify}$ 的三态（activating/deactivating/neutral）是把 OSGi Declarative Services、iPOJO 的「服务出现/消失即激活/停用」提炼成一个**满足性谓词的差分**，比回调式 API（Application Programming Interface，应用程序接口）更可推理。
 
-isolation = 运行时 ad-hoc 多态，intercept = 声明式 AOP 的「可治理版」（§7.2 对比 AOP 的 obliviousness）：横切只能作用在组件**声明**的 coeffect 面上，可被 orchestrator 审查，比 pointcut 的任意 quantify 更可控。
+isolation = 运行时 ad-hoc 多态（同一入口按运行时情形派发到不同实现），intercept = 声明式 AOP（面向切面编程，全称见 §3.6.2）的「可治理版」（§7.2 对比 AOP 的 obliviousness——被增强的代码对"自己正被横切"毫不知情）：横切只能作用在组件**声明**的 coeffect 面上，可被 orchestrator 审查，比 pointcut 的任意 quantify 更可控。
 
 **子结论（评论）**：真创新在「依赖满足性 → 生命周期转移」的响应式闭环 + isolate/intercept 两个正交扩展；DI 框架大多做不到「provider 撤走时反向 deactivate 依赖方」。
 
@@ -501,7 +501,7 @@ $$\Gamma_\infty:=\mu\Gamma.\ \Gamma\times(\Gamma\to\Gamma)\times\Sigma$$
 
 **② 两种 realization（Def.27）。** 同一个 effect function 有两种落地方式，这是 §3.2.3 与实现层的关键区分：**in-place realization** 就地改 context、返回非平凡逆元（successor 别名输入，recovery 跑逆元撤销）；**derived realization** 保持输入不动、返回一个从它派生的新 context、逆元为 $\mathrm{id}$（recovery 直接丢弃派生 context——正是 isolate/intercept 的做法）。纯函数式下二者重合，命令式宿主可按操作择一，§5.1.2 两者都实现。
 
-**③ observational equivalence（§3.3.2）：把等式读成"观察不可分辨"。** §3.1 的恢复保证是**状态相等**（Thm.7），但这是理想化——物理状态无法原样复原（`free` 不还原堆布局、generative name 不被丢弃它的逆元复原）。于是 §3 的所有等式都要**读到一个等价 ≃ 意义下**，且 ≃ 取为 **observational equivalence**：两状态相关当没有观察者能区分它们。context 的观察者拿到的就是它携带的 coeffect，每个 coeffect 自带一个等价（Def.24 的 $\simeq_k$），故 context 上的关系由各键的拼装而成（Def.33）：
+**③ observational equivalence（§3.3.2）：把等式读成"观察不可分辨"。** §3.1 的恢复保证是**状态相等**（Thm.7），但这是理想化——物理状态无法原样复原（`free` 不还原堆布局、generative name 不被丢弃它的逆元复原）。于是 §3 的所有等式都要**读到一个等价 ≃ 意义下**，且 ≃ 取为 **observational equivalence**（观察等价）：两状态相关当没有观察者能区分它们。打个比方：两本外观、页数、排版都不同的字典，只要对任何一个词的查询都给出相同释义，使用者就无从分辨、可当作"相等"——observational equivalence 关心的正是"每次可观察的查询结果是否一致"，而非内部表示是否逐字节相同。context 的观察者拿到的就是它携带的 coeffect，每个 coeffect 自带一个等价（Def.24 的 $\simeq_k$），故 context 上的关系由各键的拼装而成（Def.33）：
 
 $$\sigma\simeq\sigma':=\mathrm{dom}(\sigma)=\mathrm{dom}(\sigma')\wedge\forall k\in\mathrm{dom}(\sigma).\ \sigma(k)\simeq_k\sigma'(k);\qquad \gamma\simeq\gamma':=\sigma_\gamma\simeq\sigma_{\gamma'}$$
 
@@ -509,7 +509,7 @@ $$\sigma\simeq\sigma':=\mathrm{dom}(\sigma)=\mathrm{dom}(\sigma')\wedge\forall k
 
 **④ 由 ≃ 供给 independence（全文最抽象的一环）。** **Def.39**：两个操作 independent 当其 lift 作为 effect function 独立（Def.19）且互不扰动对方 outcome；一个键 $k$ 是 **commutative** 当其上任两操作都独立。**Thm.40（不同键上的操作天然独立）**：$k\ne k'$ 时，$a^\Sigma$ 与 $a'^\Sigma$ 各只读写自己那个键，两两交换、outcome 互不干扰。**Def.41** 定义 coeffect-mediated effect functions（最小集 $\mathfrak E_\mathcal A\subseteq\mathfrak E_\Sigma$，含单位并对"做一次操作、按 outcome 选下一步"封闭——正是组件真实行为的形状）。**Thm.42**：$e_1,e_2\in\mathfrak E_\mathcal A$，只要它们共同触及的每个键都 commutative，则 $e_1,e_2$ independent（Def.19）。这就把 §3.1.3 悬着的独立性假设**兑现**了：组件的 effect function 是 coeffect-mediated 的沿 coeffect 投影的 lift，independence 传给该 lift ⇒ 整个组件系统的 temporal composability。论文一句话点睛全文命名由来——**用空间维（依赖键是否不同/可交换）的可观测等价，去解锁时间维（effect）的独立性**：可交换部分由 effect 承载（Cor.21 任意序撤销），不可交换部分由 coeffect 承载（组件内 accumulator 强制 LIFO、跨组件声明的 coeffect 强制序）。两处限制（论文自陈）：把每处共享状态绑成键是**范式纪律**而非构造性质，无法 reify 为 coeffect 的位置落在 §6.1 边界之外；键的 commutativity 是"该键发布的接口"的性质，是**提供方**的义务而非消费方。
 
-**⑤ 范式定位（§3.3.3）：与 State monad / useEffect / Spring 的对照。** 论文把已有做法分两极：**显式状态穿线（函数式）**——State monad $S\to(A,S)$ 把环境穿过每个计算，可组合、类型可见、可等式推理，但代价是每个函数都得接/还 state、effect 维度一多就 monad transformer/handler 样板爆炸；**隐式变更（命令式/OOP）**——effect 侧代表是 React `useEffect`（在组件内部 fiber 上注册持久 effect，target 与注册机制都不作显式参数、靠调用序位在隐藏运行时状态里定位），coeffect 侧代表是 Spring 的 service locator `ApplicationContext.getBean(...)`（进程级注册表运行时取依赖、每处要 null 检查与类型转换、依赖关系隐式散落），理解 `f()` 如何依赖/改动系统要递归读实现、重构脆弱。**context 范式**兼取两者之长：effect 与 coeffect 都经**显式 context 参数**中介，每个操作可归因到具体 context、进而归因到组件；且开发者只需**逐个**处理每个 effect 与依赖（为每个原子操作给逆元、复合逆自动导出；只声明所需依赖、运行时自动解析/重连），系统行为**自动**组合——本该靠开发者纪律的正确性变成范式的结构性性质。
+**⑤ 范式定位（§3.3.3）：与 State monad / useEffect / Spring 的对照。** 论文把已有做法分两极：**显式状态穿线（函数式）**——State monad $S\to(A,S)$ 把环境穿过每个计算，可组合、类型可见、可等式推理，但代价是每个函数都得接/还 state、effect 维度一多就 monad transformer/handler 样板爆炸；**隐式变更（命令式/OOP，object-oriented programming 面向对象编程）**——effect 侧代表是 React `useEffect`（在组件内部 fiber 上注册持久 effect，target 与注册机制都不作显式参数、靠调用序位在隐藏运行时状态里定位），coeffect 侧代表是 Spring 的 service locator `ApplicationContext.getBean(...)`（进程级注册表运行时取依赖、每处要 null 检查与类型转换、依赖关系隐式散落），理解 `f()` 如何依赖/改动系统要递归读实现、重构脆弱。**context 范式**兼取两者之长：effect 与 coeffect 都经**显式 context 参数**中介，每个操作可归因到具体 context、进而归因到组件；且开发者只需**逐个**处理每个 effect 与依赖（为每个原子操作给逆元、复合逆自动导出；只声明所需依赖、运行时自动解析/重连），系统行为**自动**组合——本该靠开发者纪律的正确性变成范式的结构性性质。
 
 三极定位对照：
 
@@ -643,7 +643,7 @@ $$\sigma_\gamma:=\bigcup\{\sigma_m\mid m\in\mathrm{dom}(F_\gamma),\ \theta_m=\ma
 
 因每个 fiber 只写它声明的键（$\mathrm{dom}(\sigma_n)\subseteq p_n$）且不同 fiber provision 不交，每个键落在唯一一个 $\mathsf{Active}$ fiber 的表里，其名记 $\mathrm{provider}_k(\gamma)$。"只对 $\mathsf{Active}$ fiber 取并"是让"一个 fiber 尚未撤销任何东西就能先停止提供"成为可能——这正是 §4.3.1 的 ordering discipline 的基础。
 
-**为何分 component 与 fiber 两层？** component 是"静态定义"（$(d,p,e)$ 三元组），fiber 是"一次运行实例"（携自己的生命周期 $\theta$、parent $\pi$、表 $\sigma$）。分离二者正是"同一插件可被多次实例化、各有独立生命周期"的形式化——只消费/只注册他人的组件（provision 空）可有多个 fiber，而有非空 provision 的组件同一时刻只有一个 fiber（单源纪律）。这也是实现里 `component` 与 `fiber` 分开、`ctx.use` 从前者造后者的原因。
+**为何分 component 与 fiber 两层？** 一个贴切的类比是面向对象里的 **class 与 object**：component 是"静态定义"（$(d,p,e)$ 三元组，好比类/蓝图），fiber 是"一次运行实例"（携自己的生命周期 $\theta$、parent $\pi$、表 $\sigma$，好比 new 出来的对象）。分离二者正是"同一插件可被多次实例化、各有独立生命周期"的形式化——只消费/只注册他人的组件（provision 空）可有多个 fiber，而有非空 provision 的组件同一时刻只有一个 fiber（单源纪律）。这也是实现里 `component` 与 `fiber` 分开、`ctx.use` 从前者造后者的原因。
 
 > **深化 B · Base Calculus（§4.2）——target view 与最简五规则**
 
@@ -894,7 +894,7 @@ L-Unload ───────────────────────�
 <tbody>
 <tr><td>
 
-Cordis 是**Spatiotemporal Composability的 meta-framework**：不针对具体领域（不像 web routing / ORM / UI），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
+Cordis 是**Spatiotemporal Composability的 meta-framework**：不针对具体领域（不像 web routing 路由、ORM（Object-Relational Mapping，对象关系映射）、UI（user interface，用户界面）那样解决某个具体问题），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
 
 **core library（§5.1）**：Table 2 给出理论构件到运行时的对应（转写见本报告 §5.2）。`ctx` 即一等 context（$\Gamma_\infty$），`ctx.effect(callback)` 实现 $\mathrm{effect}_\Gamma$，回调返回/yield 逆元；`ctx.get/set/isolate/intercept` 对应 coeffect 操作；符号键 `ctx[@@store]/[@@isolate]/[@@intercept]` 对应 $\Sigma/\Sigma^{iso}/\Sigma^{inter}$。**Algorithm 1（Effect tracking）** 展示 `ctx.effect` 的构造：迭代执行回调、把每步 yield 的逆元以 $f\circ g$ 方式组进 disposer，对应 §4.3.2 的 L-Begin/L-Iter/L-Finish 迭代循环。component lifecycle（§5.1.3）用 LOADING/FAILED 等状态实现 §4 的生命周期机。
 
@@ -906,7 +906,7 @@ Cordis 是**Spatiotemporal Composability的 meta-framework**：不针对具体�
 
 「meta-framework，不针对具体领域」是 Cordis 的定位声明，也是它与 Spring/OSGi 等的差异：后者绑定 Java 生态，Cordis 只提供组合语义、语言无关（TypeScript 实现）。
 
-最有说服力的工程点是 **HMR 不需要 acceptance boundary**：Webpack/Vite 要开发者手写 `module.hot.accept`，Cordis 因为 effect 自带逆元，reload = 反转旧 effect + 重装新 fiber，天然事务化。代价（§7.3 自承）：组件自身的 in-memory 状态默认**不跨 reload 存活**，除非放进更长寿的依赖里；DSU 式状态前向迁移是未来工作。
+最有说服力的工程点是 **HMR 不需要 acceptance boundary**：Webpack/Vite 要开发者手写 `module.hot.accept`，Cordis 因为 effect 自带逆元，reload = 反转旧 effect + 重装新 fiber，天然事务化。代价（§7.3 自承）：组件自身的 in-memory 状态默认**不跨 reload 存活**，除非放进更长寿的依赖里；DSU（Dynamic Software Updating，动态软件更新：不停机就把运行中的程序升级到新版本、并把旧状态迁移过去）式状态前向迁移是未来工作。
 
 Table 2 的逐行对应是本文「可落地」主张的核心证据——理论符号几乎 1:1 映射到 `ctx.*`/`fiber.*`，这比任何 benchmark 都更能说明形式模型不是空中楼阁。
 
@@ -1223,13 +1223,13 @@ Koishi 是构建在 Cordis 上的开源聊天机器人应用框架，**四年运
 - **表达力与通用性**：Koishi 作为服务端 bot，其**每个功能都实现为 context 原语之上的插件**；连它的 web console 都是**第二个独立的 Cordis 应用**，跑在不同 runtime 上。
 - **动态组合在生产中成立**：orchestrator 可在运行时禁用某插件而不重启 host——Koishi 常规执行此操作。相比 §1.2.1 中「插件间依赖几乎不存在」的 VSCode，Koishi 生态**表现出实质的插件间依赖**，且这种组合在独立开发的插件间成立而不出错。
 
-作者明确限定案例的证据性质：这是**观察性的、existence-and-generality 论证**，不是针对替代架构的受控对比，也不主张覆盖 Koishi 特定领域之外的普适性。
+作者明确限定案例的证据性质：这是**观察性的、existence-and-adoption 论证**，不是针对替代架构的受控对比，也不主张覆盖 Koishi 特定领域之外的普适性。
 
 **结论（原文）**：Koishi 以 4000+ 插件的真实生态**证成** Cordis 的表达力与动态组合能在生产系统中成立，但这是存在性与通用性的论证，而非受控实验。
 
 </td><td>
 
-「web console 是第二个独立 Cordis 应用」是最漂亮的自证：框架用自己组合出自己的控制台，等于 dogfooding 到底。4000+ 插件是本文**唯一的规模化经验证据**，含金量在于「独立开发者、真实依赖、长期运行」三点同时成立。
+「web console 是第二个独立 Cordis 应用」是最漂亮的自证：框架用自己组合出自己的控制台，等于 dogfooding（吃自家狗粮：自己先用自己的产品来搭真实系统）到底。4000+ 插件是本文**唯一的规模化经验证据**，含金量在于「独立开发者、真实依赖、长期运行」三点同时成立。
 
 必须冷静看待的边界（作者自己点破，值得表扬）：**没有对照组**——没有「换成 OSGi/DI 会怎样」的 A/B，也没有量化指标（如恢复成功率、reload 延迟、故障率）。所以这是「能做到且普遍」的存在性证据，不是「比别人好多少」的比较性证据。
 
@@ -1246,7 +1246,7 @@ Koishi 是构建在 Cordis 上的开源聊天机器人应用框架，**四年运
 
 **② temporal composability without cognitive overhead。** §1.2.1 所述插件系统无法在不重启宿主的前提下卸载单个扩展的 effect；Koishi 则**常规执行**此操作：从 console 禁用一个插件、其 effect 就地被撤回；开发期 HMR 引擎在保存时重装被编辑的插件、同时保住系统别处的缓存状态与活连接。Cordis 让这种移除不只可能而且**对插件作者省力**——因经 context 的 effect 被自动 track、逆元被自动复合（§3.1），即便经验不足的作者也无须写 uninstall 路径就得到有序清理。这达成了 §1.2.1 指出其缺失的 **locality of concern**：本该靠各作者纪律的正确性被抽象**一次性地**兜住。
 
-**③ spatial composability across an open ecosystem。** 与 §1.2.1 "插件间依赖几乎不存在"的 VSCode 相对，Koishi 生态**表现出真实的依赖拓扑**：IM 适配器提供各消息平台访问、数据库驱动提供持久存储，功能插件把它们声明为 coeffect 并访问。运行时重配 provider（切换存储后端、重连适配器）**只重激活解析依赖发生变化的那些依赖者**（§3.2）；依赖不可用的插件保持 inactive 直到它出现、不报错。案例真正坐实的是**这种组合在独立编写的代码间成立**：插件与其依赖通常由不同作者写、除连接它们的 coeffect 外不协调任何东西，reactive coeffect 却让整个装配在开放生态里保持一致。
+**③ spatial composability across an open ecosystem。** 与 §1.2.1 "插件间依赖几乎不存在"的 VSCode 相对，Koishi 生态**表现出真实的依赖拓扑**：IM（Instant Messaging，即时通讯）适配器提供各消息平台访问、数据库驱动提供持久存储，功能插件把它们声明为 coeffect 并访问。运行时重配 provider（切换存储后端、重连适配器）**只重激活解析依赖发生变化的那些依赖者**（§3.2）；依赖不可用的插件保持 inactive 直到它出现、不报错。案例真正坐实的是**这种组合在独立编写的代码间成立**：插件与其依赖通常由不同作者写、除连接它们的 coeffect 外不协调任何东西，reactive coeffect 却让整个装配在开放生态里保持一致。
 
 **④ threats to validity（论文自陈的证据边界，值得表扬）。** 证据取自**单一生态、单一宿主语言**，故无法把范式本身的优劣与其 TypeScript 实现、或 Koishi 特定领域的优劣分开，且它是**观察性的、非对照实验**。因此案例确立的是 **existence-and-adoption**（存在且被采用）结果而非定量结果；"度量该抽象的开销、以及它对开发者生产力相对某 baseline 的影响"留作未来工作。与 §1.2 的 87/100、7/100 呼应：VSCode 那两个数字是"靶子"（证明问题存在），Koishi 的 4000+ 是"答卷"（证明方案可行且通用），但两者都不是"比别人好多少"的比较性证据。
 
@@ -1297,7 +1297,7 @@ Koishi 生态的**依赖拓扑**与"两个独立运行时"一览：
 
 **① System Boundary（§6.1）——逆元"值多少"由边界决定。** 边界把环境分两半：一处**在内**当系统能独占地改它并复原改前状态（操作在 $\Gamma$ 里被 track、可 recover）；**在外**当上述任一能力失效（操作退化为 $\mathrm{id}_\Gamma$、既不 track 也不 recover）。coeffect **移动边界**——它把外部位置 reify 成一组它能给逆元的操作，使原本 $\mathrm{id}_\Gamma$ 的访问变得可 track。边界**按位置而非按介质**划：一块内存在系统独写时在内、别的进程也写时在外；一个文件在私有路径下在内、他人可读写时在外。一个越界操作通常分两阶段：**acquisition**（获取访问并在内装一条记录：`open`↔`close`、`malloc`↔`free`、`fork`↔`kill`——记录本身是 reify 该位置的 coeffect 的一部分，装它是可逆 effect）与 **emission**（把数据推过该通道：`write` 交给文件的字节、`send` 放上线的数据报——push 退化为 $\mathrm{id}_\Gamma$）。两阶段落在边界两侧：acquisition 在内、emission 越界。必须从 emission 恢复时只有两招——**withhold**（推迟发射直到产生它的状态确定持久，即 rollback-recovery 的 output commit 问题）与 **compensation**（补偿动作，把状态复原到应用给的、比 ≃ 更粗的等价，如删掉已建文件、退掉已扣款项；补偿以与逆元相同的 LIFO 复合，但元理论不随之转移——Def.60 的交换性是对着 ≃ 证的、须对更粗等价重证）。
 
-**② Service Multiplexing（§6.2）——exclusive binding vs service broker。** 一个服务可由多个 provider 实现，多重性有两形态：**(1) exclusive binding**——多实现共享一接口、同时至多一个绑定；切换要卸一个 provider、装另一个，瞬时扰动每个消费者的依赖。**(2) service broker**——一个中心服务作接口入口，被后端 provider 与消费者**双向注入**，多 provider 共存、broker 分发请求；更新后端 provider 时 broker 不动、消费者依赖无变化、不触发 reload。broker 支撑三种能力：**load balancing**（多 provider 共存时按策略——round-robin/最少负载/延迟加权——分发；provider 是普通组件、增删即扩缩容，各自经可逆 effect 注册、卸载即自动移出路由集）；**rolling updates**（把运行时升级实现降为受控 provider 转移：新 provider 作额外 fiber 注册、ACTIVE 后逐步移流量、旧 provider 无在途请求后卸载——把传统的基础设施级操作，如容器编排/蓝绿部署，变成应用级组合模式）；**cross-process invocation**（跨进程：每进程有自己的 Cordis context 与本地 provider，一个协调组件把彼此当远程 provider 连起来、经保接口的 RPC 中介，使分布对消费者透明；代价是跨进程调用有延迟、可能中途失败，故跨进程接口必须设计成异步契约）。
+**② Service Multiplexing（§6.2）——exclusive binding vs service broker。** 一个服务可由多个 provider 实现，多重性有两形态：**(1) exclusive binding**——多实现共享一接口、同时至多一个绑定；切换要卸一个 provider、装另一个，瞬时扰动每个消费者的依赖。**(2) service broker**——一个中心服务作接口入口，被后端 provider 与消费者**双向注入**，多 provider 共存、broker 分发请求；更新后端 provider 时 broker 不动、消费者依赖无变化、不触发 reload。broker 支撑三种能力：**load balancing**（多 provider 共存时按策略——round-robin/最少负载/延迟加权——分发；provider 是普通组件、增删即扩缩容，各自经可逆 effect 注册、卸载即自动移出路由集）；**rolling updates**（把运行时升级实现降为受控 provider 转移：新 provider 作额外 fiber 注册、ACTIVE 后逐步移流量、旧 provider 无在途请求后卸载——把传统的基础设施级操作，如容器编排/蓝绿部署，变成应用级组合模式）；**cross-process invocation**（跨进程：每进程有自己的 Cordis context 与本地 provider，一个协调组件把彼此当远程 provider 连起来、经保接口的 RPC（Remote Procedure Call，远程过程调用：像调用本地函数一样调用另一进程/机器上的函数）中介，使分布对消费者透明；代价是跨进程调用有延迟、可能中途失败，故跨进程接口必须设计成异步契约）。
 
 | 形态 | 机制 | 更新时对消费者的扰动 | 支撑能力 |
 | --- | --- | --- | --- |
@@ -1314,7 +1314,7 @@ Koishi 生态的**依赖拓扑**与"两个独立运行时"一览：
 | 细粒度策略 | interception 元数据（provider 调用时查） | 约束"怎么用"而非"是否满足" | 可运行时增删、不触发 reload |
 | 沙箱不可信组件 | 语言外执行边界 + bridge | bridge 是普通 fiber、能力可被削减 | 泛化跨进程调用 |
 
-**④ Language Independence（§6.4）——两维各自的最小语言能力。** 范式语言无关，只由两维可组合定义。**temporal 维**最基本要 **closures**（可逆 effect 把动作与逆元配对，逆元连同它复原的状态必须作为值被捕获以在 teardown 重放）；此外"组件代码及其加载副作用须能在运行时引入/撤回"——托管运行时表现为**可编程模块注册表**（加载的模块可从注册表逐出并在无引用后 GC，如 Node.js），原生代码则表现为**显式动态链接/解链**（`dlopen`/`dlclose`、`LoadLibrary`/`FreeLibrary`），WebAssembly 依 embedder 走两条路之一。**spatial 维**归约为一个 DI 问题，在两层落地：**类型层**——语言要能表达良类型依赖访问，即 context 类型须记录每个键的 coeffect，Haskell 的 **typeclass**、Rust 的 **trait**（让 provider 从自己模块经 instance/impl 扩展 context 类型）、TypeScript 的 **module augmentation** 都行；**运行时层**——依赖访问须动态中介（coeffect 随 provider 装卸而变、跨 context 解析各异），需透明 interpose 的原语，如 JavaScript 的 **Proxy** 或 Python 的**描述符协议** `__get__`，缺则退回运行时反射（牺牲类型安全与体验）。元编程设施（注解/装饰器、Rust 过程宏/Scala 宏/Zig comptime）可把 typing 与 mediation 一并供给。
+**④ Language Independence（§6.4）——两维各自的最小语言能力。** 范式语言无关，只由两维可组合定义。**temporal 维**最基本要 **closures**（可逆 effect 把动作与逆元配对，逆元连同它复原的状态必须作为值被捕获以在 teardown 重放）；此外"组件代码及其加载副作用须能在运行时引入/撤回"——托管运行时表现为**可编程模块注册表**（加载的模块可从注册表逐出并在无引用后 GC（garbage collection，垃圾回收）掉，如 Node.js），原生代码则表现为**显式动态链接/解链**（`dlopen`/`dlclose`、`LoadLibrary`/`FreeLibrary`），WebAssembly 依 embedder 走两条路之一。**spatial 维**归约为一个 DI 问题，在两层落地：**类型层**——语言要能表达良类型依赖访问，即 context 类型须记录每个键的 coeffect，Haskell 的 **typeclass**、Rust 的 **trait**（让 provider 从自己模块经 instance/impl 扩展 context 类型）、TypeScript 的 **module augmentation** 都行；**运行时层**——依赖访问须动态中介（coeffect 随 provider 装卸而变、跨 context 解析各异），需透明 interpose 的原语，如 JavaScript 的 **Proxy** 或 Python 的**描述符协议** `__get__`，缺则退回运行时反射（牺牲类型安全与体验）。元编程设施（注解/装饰器、Rust 过程宏/Scala 宏/Zig comptime）可把 typing 与 mediation 一并供给。
 
 宿主语言最小能力对照：
 
@@ -1330,7 +1330,7 @@ Koishi 生态的**依赖拓扑**与"两个独立运行时"一览：
 | 方案 | 做法 | 代价 |
 | --- | --- | --- |
 | key namespacing | 键空间扩为 $K\times P$（$P$ 标识接口包） | 最耦合，依赖外部包注册表 |
-| peer dependencies | 经宿主包管理器声明版本约束（Cordis 现采用） | 靠 semver 约定不可强制；通常单版本解析 |
+| peer dependencies | 经宿主包管理器声明版本约束（Cordis 现采用） | 靠 semver（semantic versioning，语义化版本号）约定不可强制；通常单版本解析 |
 | structural compatibility | 用兼容谓词替代 $k\in\mathrm{dom}(\sigma)$（类比结构子类型） | record 型易、行为契约难、有界量化后不可判定 |
 
 **⑤ 其余边界与 Co-Design（§6.5–6.7）。** **循环依赖（§6.5）**：reactive coeffect 模型下依赖环只是让涉事组件永久 inactive（满足谓词永不为真），且不同于并发死锁——它可从声明静态预测、加载时即报告；多数"貌似互相依赖"可拆成更细组件消环（如 server/access-controller 拆成 server-core、access-control-core、request-mediation、policy-management 四件，集成组件数最坏随 $n$ 二次增长，但组件轻量、不影响正确性/性能，只增配置与认知负担，可用打包/约定接线/脚手架缓解）。**版本/结构类型（§6.6）**：当前 coeffect 只做 **nominal linking**（按键名），缺 versioned/structural linking，独立构建时暴露 interface drift 与 key collision；三条路——key namespacing（$K\times P$ 消碰撞，最耦合、依赖外部包注册表）、peer dependencies（经宿主包管理器声明版本约束，Cordis 现采用，靠 semver 约定不可强制、且通常单版本解析）、structural compatibility（用兼容谓词替代 $k\in\mathrm{dom}(\sigma)$，类比结构子类型，record 型易、行为契约难、参数多态引入有界量化后不可判定）；统一三者仍是开放问题。**Co-Design（§6.7）**：与**语言**协同可把 context 重新隐式化（保 §3.3 语义、函数不再显式传 context，且杜绝"经闭包/全局变量误入他人 context"的 effect 泄漏/coeffect 逃逸），并把 effect/coeffect 告知编译器（为迭代发单个状态机、把 coeffect spec 纳入类型系统 ⇒ 编译期报依赖环、按类型结构比较依赖如 row types）；与 **OS** 协同可在细粒度提供沙箱（把 coeffect spec 当组件可达之全部、如 WASM 从 embedder 取 imports）、把 OS 资源作 coeffect 提供（内存、文件描述符在内核界面记账以便恢复），并让部分只能 withhold/compensate 的操作真正可逆（事务式存储可回滚、写时复制/不可变存储移指针即回到早前状态）。
@@ -1494,12 +1494,12 @@ _导读_：两条 foundational 簇（可逆 effect、响应式 coeffect）分别
 - **temporal 谱系四家（§7.3）**：按"如何处理离场组件的状态与 effect"划分——
   - _状态前向迁移_：DSU（Hicks C-DSU、Stoyle con-freeness、Hayden **Kitsune**）、Erlang/OTP、JS HMR；对照本文"反转+重装、状态默认不跨 reload"。
   - _手写恢复_：OSGi/Command/saga/handler finalizer/event sourcing——逆元是未强制义务；React `useEffect` 最接近但不可组合。
-  - _静态作用域反转_：STM、reversible computing（Janus）、reversible process calculi（RCCS、Phillips & Ulidowski 的 causal consistency）、linear types/RAII/Rust ownership——作用域事先定死。
+  - _静态作用域反转_：STM（Software Transactional Memory，软件事务内存：把一段内存操作当数据库事务，要么整体提交、要么整体回滚）、reversible computing（Janus）、reversible process calculi（RCCS、Phillips & Ulidowski 的 causal consistency）、linear types/RAII/Rust ownership——作用域事先定死。
   - _拦截式回收_：**Nooks / shadow drivers / Akeso**——运行时维护记录来回收，最近的系统级先例。
 - **spatial 谱系三家（§7.4）**：按"绑定如何响应变化"划分——
   - _初始化期接线_：Spring/Guice/Angular/Inversify、Vue/React Context——不响应式重解析。
   - _可用性响应_：**OSGi-DS / iPOJO / R-OSGi**——最接近本文，但回调手写且同步。
-  - _值级响应_：FRP / signals（SolidJS、Vue、Angular Signals）——值级粒度、有 glitch freedom，与本文组件级粒度互补。
+  - _值级响应_：FRP（Functional Reactive Programming，函数式响应式编程）/ signals（SolidJS、Vue、Angular Signals）——值级粒度、有 glitch freedom（无毛刺：一次更新传播中，派生值不会短暂读到"新旧混合"的中间结果），与本文组件级粒度互补。
 
 ### 3.4 关联资源
 - 官方代码：Cordis — https://github.com/cordiverse/cordis （自述 A Meta-Framework of Spatiotemporal Composability，约 5k stars）
@@ -1557,7 +1557,7 @@ _导读_：两条 foundational 簇（可逆 effect、响应式 coeffect）分别
 
 - **论文卖点（节号）**：§5.3 / §8，Koishi「4000+ 社区插件、四年生产」验证设计。
 - **质疑论点**：规模大只证明「能用且通用」，不证明「因为 Cordis 的时空可组合语义才做到」——同等规模的插件生态（VSCode 数万扩展）在没有可逆 effect 的情况下也存在。
-- **该质疑成立的证据**：作者自己限定这是 observational、existence-and-generality 论证，非受控对比（§5.3 明言）；且 Koishi 现用的是 v3、本文语义是 v4，规模数据与被评估语义并非同一版本。
+- **该质疑成立的证据**：作者自己限定这是 observational、existence-and-adoption 论证，非受控对比（§5.3 明言）；且 Koishi 现用的是 v3、本文语义是 v4，规模数据与被评估语义并非同一版本。
 - **论文应该但未给的反驳证据**：缺「关闭可逆 effect / 换普通 DI 后故障率、恢复成功率、reload 延迟」的对照，也缺「4000 插件中有多少真正依赖 revertible/reactive 语义」的统计。
 
 **质疑 ② — 针对「评估指标」卖点：完整恢复是被证明的定理，但无端到端度量**
@@ -1874,7 +1874,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | 一 | 核心 | ~75（1.5 骨架细化到 §1–§8） | 否（1.1–1.5） | 合理 |
 | 二 | 具体 | ~430（每子节加「深化」块，§2.3.4 四段 A/B/C/D） | 是（2.1–2.6，Method 拆 2.3.1–2.3.4） | 合理，深度扩写后仍按维度分块 |
 | 三 | 扩展 | ~230（新增 §3.6 相关工作精读、Q4/Q5） | 是（3.1–3.6，含 3.5.1） | 合理 |
-| 四 | Appendix（补充材料） | ~85（A.1–A.6，含算法一览 / 定理速查 / 记号速查） | 是（A.1–A.6） | 合理 |
+| 四 | Appendix（补充材料） | ~110（A.1–A.8，含算法一览 / 定理·记号速查 / 引理清单 / 全要素总索引） | 是（A.1–A.8） | 合理 |
 | 五 | 完整性与布局检验 | ~110 | 是（5.1–5.5） | 表格型，合理 |
 | 六 | 事实核验 | ~110（数字 11 / 公式 16 / 结论 13 / §6.7 算法·定理·定义对账） | 是（6.1–6.7） | 表格型，合理 |
 
@@ -1890,7 +1890,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | S4 | Table 1 / Table 2 转写为 Markdown 而非图片 | 原文即文字表，规范要求转写 | §2.3.4 / §5.2 |
 | S5 | 删除 2.5 骨架里的 `table_pXX_YY.png` 图片占位 | 本文无表格图片，避免死引用 | §2.5 |
 | S6 | 对 88 页论文做**深度扩写**：每个偏薄子节加「深化」块（据 pdf.txt 抽真实 Def/Thm/公式），§2.3.4 扩为 A/B/C/D 四段（component/fiber、base calculus、四类 transition、五元理论定理） | 原 1401 行对 88 页偏薄，理论骨干（尤其 §4 元理论）未展开 | §2.1–§2.6、§3.6 |
-| S7 | 新增 §3.6 相关工作精读（§7 逐条对照）、§四 A.4–A.6（算法一览 / 定理速查 / 记号速查）、§3.5 Q4/Q5 | 补齐 §7 与"附录级细节"定位、并解决 §5.5-O1 | §3.6、§四、§3.5 |
+| S7 | 新增 §3.6 相关工作精读（§7 逐条对照）、§四 A.4–A.8（算法一览 / 定理·记号速查 / 引理清单 / 全要素总索引）、§3.5 Q4/Q5 | 补齐 §7 与"附录级细节"定位、并解决 §5.5-O1 | §3.6、§四、§3.5 |
 | S8 | §六 事实核验纳入新增定理/公式对账（公式 F10–F16、结论 C8–C13、数字 8–11），元理论五定理明确标为【论文事实】 | 深度扩写引入大量新事实，须纳入对账 | §6.1–6.3、6.6 |
 
 ### 5.5 仍待优化点（评者自评，下次迭代候选）
@@ -1955,7 +1955,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | C2 | 响应式 coeffect 确立 local spatial composability | §1.2、§2.3.2 | §1.3 贡献 2、§3.2 | ✅ 一致 | 保留 |
 | C3 | observational equivalence 供 effect 以 independence | §1.2、§2.3.3 | §1.3 贡献 3、§3.3.2 Thm.40 | ✅ 一致 | 保留 |
 | C4 | 元理论把Spatiotemporal Composability从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
-| C5 | Koishi 是 observational、existence-and-generality 论证，非受控对比 | §2.5、§3.5.1 | §5.3（原文明言） | ✅ 一致 | 保留 |
+| C5 | Koishi 是 observational、existence-and-adoption 论证，非受控对比 | §2.5、§3.5.1 | §5.3（原文明言） | ✅ 一致 | 保留 |
 | C6 | HMR 无需开发者标注 acceptance boundary | §2.4、§四 A.2 | §5.2.2 | ✅ 一致 | 保留 |
 | C7 | in-memory 状态默认不跨 reload 存活 | §2.4、§2.6、§3.5.1 质疑③ | §7.3（"does not survive a reload unless…"） | ✅ 一致 | 保留 |
 | C8 | Preservation：well-formed registry 被任一规则保持 | §2.3.4 深化 D | §4.4 Thm.59（论文事实） | ✅ 一致 | 保留 |

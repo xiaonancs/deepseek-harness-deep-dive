@@ -10,14 +10,14 @@
 
 ## 上游
 
-- 仓库：https://github.com/deepseek-ai/deepseek-harness （MIT，developer preview）
+- 仓库：https://github.com/deepseek-ai/deepseek-harness （MIT License，一种宽松的开源许可证；developer preview，即面向开发者的预览版，尚非稳定发布）
 - 参考底座 Cordis：https://github.com/cordiverse/cordis ；论文预印本：https://github.com/cordiverse/paper
 
 ## 证据等级约定
 
 - `[verified]` 源码可证（附 file:line）
 - `[inferred]` 合理推断（有据但非直证）
-- `[claimed]` 仅社区/二手口径（star 数、HN 分数、竞品对比等）
+- `[claimed]` 仅社区/二手口径（star 数、HN（Hacker News，一个技术社区，帖子按投票得分排序）分数、竞品对比等）
 
 对源码无法证明的动机（"为什么这样设计""语言选型""团队意图"），一律用「可能/或许/不排除」。
 

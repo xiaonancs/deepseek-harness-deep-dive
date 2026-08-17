@@ -55,13 +55,13 @@ flowchart TD
 
 ### 为何 vendored 而非 npm 依赖
 
-"vendored"（源码内置）这个词值得先解释一句：它指的是不走 npm 安装，而是把某个依赖的源代码**原样搬进自己仓库**、连版本一起钉死，从此这份代码由你自己保管、自己负责。dsh 就是这么做的——它没有把 Cordis 当成普通 npm 依赖装进 `node_modules`，而是把 Cordis core 及其基础库（cosmokit、schemastery）以**源码**形式复制进 `vendor/`，共 9 个目录 `[verified]`（`vendor/README.md:13-23`，目录：cordis / cosmokit / schemastery / loader / include / group / timer / hmr / logger-console），pin 在 `cordis@4.0.0-rc.7`（commit `56b3d4f…`）`[verified]`（`vendor/README.md:17`）。
+"vendored"（源码内置）这个词值得先解释一句：它指的是不走 npm 安装，而是把某个依赖的源代码**原样搬进自己仓库**、连版本一起钉死，从此这份代码由你自己保管、自己负责。dsh 就是这么做的——它没有把 Cordis 当成普通 npm（Node.js 的包管理器与公共包仓库）依赖装进 `node_modules`，而是把 Cordis core 及其基础库（cosmokit、schemastery）以**源码**形式复制进 `vendor/`，共 9 个目录 `[verified]`（`vendor/README.md:13-23`，目录：cordis / cosmokit / schemastery / loader / include / group / timer / hmr / logger-console），pin 在 `cordis@4.0.0-rc.7`（commit `56b3d4f…`）`[verified]`（`vendor/README.md:17`）。
 
-为什么要费这个劲、而不直接 npm 依赖？第一性的理由是：Cordis core 当时仍是 release candidate，而 dsh 的 agent loop 正确性依赖的是 fiber 生命周期、effect 拆卸、waterfall 派发这些**框架内部行为**（内部不变量）、而非稳定的公共 API——一次 RC 版本跳变就可能在无本地修复路径的情况下把它们打破。当你依赖的是被依赖物的内部不变量时，"拥有"比"依赖"更能守住正确性边界：vendored 让框架层可审计、可就地在树内打补丁（该本地修改日志现已积累 18 条，其中第 6 条"fiber 生命周期加固"就地闭合了三个可重入拆卸缺口）。ADR 明确把"直接 npm 依赖"列为 rejected，同时只 vendored"内部行为要紧的框架层"，真正的第三方依赖（js-yaml、chokidar、@standard-schema/spec 等）仍留在 npm，边界克制 `[verified]`（`.agents/notes/implemented/process/2026-06-11-vendor-cordis-as-source.md:9,17-20`；`vendor/README.md:25,30-50`）。
+为什么要费这个劲、而不直接 npm 依赖？第一性的理由是：Cordis core 当时仍是 release candidate（候选发布版，简称 RC，指正式版之前的最后候选），而 dsh 的 agent loop 正确性依赖的是 fiber 生命周期、effect 拆卸、waterfall 派发这些**框架内部行为**（内部不变量）、而非稳定的公共 API（Application Programming Interface，应用程序接口，指对外承诺不轻易变动的调用约定）——一次 RC 版本跳变就可能在无本地修复路径的情况下把它们打破。当你依赖的是被依赖物的内部不变量时，"拥有"比"依赖"更能守住正确性边界：vendored 让框架层可审计、可就地在树内打补丁（该本地修改日志现已积累 18 条，其中第 6 条"fiber 生命周期加固"就地闭合了三个可重入拆卸缺口）。ADR（Architecture Decision Record，架构决策记录：把一次关键技术取舍的来龙去脉正式写进文档）明确把"直接 npm 依赖"列为 rejected，同时只 vendored"内部行为要紧的框架层"，真正的第三方依赖（js-yaml、chokidar、@standard-schema/spec 等）仍留在 npm，边界克制 `[verified]`（`.agents/notes/implemented/process/2026-06-11-vendor-cordis-as-source.md:9,17-20`；`vendor/README.md:25,30-50`）。
 
 ### rescope 到 @deepseek-ai/cordis
 
-vendored 之外还有一步：所有 vendored 包被**重命名进 `@deepseek-ai` 作用域**（rescope，即改包名前缀：`cordis` → `@deepseek-ai/cordis`，`@cordisjs/plugin-<x>` → `@deepseek-ai/cordis-plugin-<x>`）`[verified]`（`vendor/README.md:5`、本地修改条目 17 `:49`）。原因有二 `[verified]`（`vendor/README.md:5`）：其一，每个 harness 包把 `cordis` 声明为 peerDependency，所以**发布 harness 就会一并发布这一框架层**——改了名，发出去的才是自己保管的这份，而不会和别人下载到的上游原版撞车；其二，若用上游原名发布，等于在 registry 上抢注（squat）上游包名，占了本不属于自己的名字。目录名与版本号则**刻意保持不变**，使 manifest（vendored 清单）仍读作一份上游快照，便于日后逐行比对、跟上游同步。
+vendored 之外还有一步：所有 vendored 包被**重命名进 `@deepseek-ai` 作用域**（rescope，即改包名前缀：`cordis` → `@deepseek-ai/cordis`，`@cordisjs/plugin-<x>` → `@deepseek-ai/cordis-plugin-<x>`）`[verified]`（`vendor/README.md:5`、本地修改条目 17 `:49`）。原因有二 `[verified]`（`vendor/README.md:5`）：其一，每个 harness 包把 `cordis` 声明为 peerDependency（同伴依赖：由使用方统一提供、大家共享同一份，而不是各装各的），所以**发布 harness 就会一并发布这一框架层**——改了名，发出去的才是自己保管的这份，而不会和别人下载到的上游原版撞车；其二，若用上游原名发布，等于在 registry 上抢注（squat）上游包名，占了本不属于自己的名字。目录名与版本号则**刻意保持不变**，使 manifest（vendored 清单）仍读作一份上游快照，便于日后逐行比对、跟上游同步。
 
 ## 四、实现细节关键点
 
@@ -98,7 +98,7 @@ sequenceDiagram
 
 </div>
 
-> **↔ 论文对应**：这里的 "Registrations are effects" 与 disposer 反序卸载，在《Spatiotemporal Composability》论文里被形式化为**可逆 effect**——每次 context 变换都携带显式逆元，由 effect context $\partial\Gamma=(\gamma,\varphi)$ 里的 accumulator $\varphi$ 追踪（track），卸载即一次 recover（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §3.1，Def.2/3/6）。disposer 的"逆序（LIFO）运行"正对应论文 Thm.16：组件内一串 effect 按 LIFO 反转、无需任何前提即精确恢复 `[verified]`。
+> **↔ 论文对应**：这里的 "Registrations are effects" 与 disposer 反序卸载，在《Spatiotemporal Composability》论文里被形式化为**可逆 effect**——每次 context 变换都携带显式逆元，由 effect context $\partial\Gamma=(\gamma,\varphi)$ 里的 accumulator $\varphi$ 追踪（track），卸载即一次 recover（见 [Part IV 论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) §3.1，Def.2/3/6）。disposer 的"逆序（LIFO，Last-In-First-Out，后进先出：最后装上的最先拆掉）运行"正对应论文 Thm.16（Thm. = Theorem，定理）：组件内一串 effect 按 LIFO 反转、无需任何前提即精确恢复 `[verified]`。
 
 ### Service 子类与 Context 树
 
@@ -118,12 +118,12 @@ stateDiagram-v2
   PENDING --> LOADING: inject 的 service 全部就绪
   LOADING --> ACTIVE: apply(ctx) 跑完<br/>effect 已注册、disposer 已收集
   ACTIVE --> PENDING: 依赖的 service 被卸载<br/>响应式回退、重新门控
-  ACTIVE --> DISPOSING: 卸载 / 热重载 / 父 ctx 销毁
-  DISPOSING --> DISPOSED: 逆序运行全部 disposer<br/>重复调用为 no-op
+  ACTIVE --> UNLOADING: 卸载 / 热重载 / 父 ctx 销毁
+  UNLOADING --> DISPOSED: 逆序运行全部 disposer<br/>重复调用为 no-op
   DISPOSED --> [*]
 ```
 
-图注：同一个 fiber 的生命周期状态机。与前两图（树形结构、加载时序）不同，本图强调状态迁移本身——尤其是 ACTIVE 在所依赖 service 消失时会"响应式回退"到 PENDING 重新门控，以及卸载路径必经 DISPOSING 逆序解开全部 disposer 才落到 DISPOSED。此图证明"注册即 effect、卸载即回滚"是一套可重入、幂等的受控状态迁移，而非一次性动作。
+图注：同一个 fiber 的生命周期状态机。与前两图（树形结构、加载时序）不同，本图强调状态迁移本身——尤其是 ACTIVE 在所依赖 service 消失时会"响应式回退"到 PENDING 重新门控，以及卸载路径必经 UNLOADING 逆序解开全部 disposer 才落到 DISPOSED（UNLOADING 是 Cordis 源码里 `FiberState` 枚举的真实状态名，`vendor/cordis/src/fiber.ts:147`）。此图证明"注册即 effect、卸载即回滚"是一套可重入、幂等的受控状态迁移，而非一次性动作。
 
 </div>
 
@@ -142,7 +142,7 @@ stateDiagram-v2
 
 ### vendored 如何被解析
 
-上面 rescope 改了名字，那真跑起来时怎么保证用的就是仓库里这份、而不是从 npm 又拉了一份？靠的是 pnpm 的工作区链接。`pnpm-workspace.yaml` 里 `linkWorkspacePackages: true`，并把 `@deepseek-ai/cosmokit`、`@deepseek-ai/schemastery` 等显式 `link:vendor/<dir>` `[verified]`（`pnpm-workspace.yaml:25,28-29`）。这样，harness 包里保留的上游 semver range 会解析到这些被 pin 的工作区副本——**源码执行与构建产物执行跑的是同一份 vendored Cordis 代**。`hygiene` 门禁 `verify-vendored-links`（一道自动检查）会断言每个 vendored 名字都解析到 `pnpm-lock.yaml` 里的 `link:`、且旁边没有 registry 副本 `[verified]`（`vendor/README.md:5`）——相当于门口有人核对："这份必须是仓库里的那份，绝不许混进一个从外面下载的同名件。"
+上面 rescope 改了名字，那真跑起来时怎么保证用的就是仓库里这份、而不是从 npm 又拉了一份？靠的是 pnpm 的工作区链接。`pnpm-workspace.yaml` 里 `linkWorkspacePackages: true`，并把 `@deepseek-ai/cosmokit`、`@deepseek-ai/schemastery` 等显式 `link:vendor/<dir>` `[verified]`（`pnpm-workspace.yaml:25,28-29`）。这样，harness 包里保留的上游 semver range（semver = Semantic Versioning，语义化版本；range 指"可接受的版本范围"）会解析到这些被 pin 的工作区副本——**源码执行与构建产物执行跑的是同一份 vendored Cordis 代**。`hygiene` 门禁 `verify-vendored-links`（一道自动检查）会断言每个 vendored 名字都解析到 `pnpm-lock.yaml` 里的 `link:`、且旁边没有 registry 副本 `[verified]`（`vendor/README.md:5`）——相当于门口有人核对："这份必须是仓库里的那份，绝不许混进一个从外面下载的同名件。"
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -175,11 +175,11 @@ flowchart LR
 
 **底座关系：Cordis 在下，dsh 在上。** Cordis 本身是一套**通用**的 TypeScript 微内核插件框架，并不为 agent 而生——它是从聊天机器人框架 Koishi 的生态里抽象、独立出来的一层"插件怎么装卸组合"的底层机制，主要由作者 `@shigma` 推动（社区调研记其贡献占绝对多数，约 537/550 commits）`[claimed]`（`全网调研-社区认知地图.md` B 节）。dsh 把这套框架当**底座**：它以 vendored 源码方式收进 `vendor/`、pin 在 `cordis@4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`，并让每个 harness 包把它声明为 peerDependency `[verified]`（`vendor/README.md`，详见本章第三、四节）。也就是说，dsh 的每一颗插件都长在 Cordis 提供的那棵 `ctx` 树上。
 
-**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中已有一条即条目 15 被上游采纳、回合并为 Cordis 的 PR#41）`[verified]`（`vendor/README.md:30-50`）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节）。
+**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中条目 15 是把上游 Cordis 的 PR#41〈Pull Request，拉取请求〉回植进这份 vendored 副本——因为钉住的那次提交早于该 PR 合入，dsh 只能自己先把这处改动补上）`[verified]`（`vendor/README.md:30-50`，条目 15 原文写作 "ports cordiverse/cordis#41"）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节）。
 
 **边界划分：Cordis 管"插件怎么装卸组合"，dsh 管"agent 怎么跑"。** 两者的职责可以干净地切开：
 
-- **Cordis 提供通用机制**——Context/Service（上下文即服务仓库）、fiber/effect（注册即可回滚的副作用）、loader（有序装配插件树）、HMR（热重载）等。这些机制里没有一个字提到"agent""模型""工具"，它们对任何插件化应用都成立。
+- **Cordis 提供通用机制**——Context/Service（上下文即服务仓库）、fiber/effect（注册即可回滚的副作用）、loader（有序装配插件树）、HMR（Hot Module Replacement，热模块替换，俗称热重载：不重启进程就把运行中的模块换成新版本）等。这些机制里没有一个字提到"agent""模型""工具"，它们对任何插件化应用都成立。
 - **dsh 在其上叠加领域产品**——agent loop、工具注册表（`ctx.tools`）、会话日志（`ctx.sessions`）、能力接缝（Definition/Provider/Consumer 三角色）、模型适配器（`ctx.llm`）。这些才是"一个 agent harness"特有的东西，它们全部以 Cordis 插件的形式挂上底座。
 
 一句话记：**Cordis 回答"插件怎么装卸组合"，dsh 回答"agent 怎么跑"**；前者是通用底盘，后者是跑在底盘上的具体产品。
@@ -211,7 +211,7 @@ flowchart TD
 
 ## 六、竞品/横向对比
 
-同类 harness（Claude Code / Codex CLI / Pi 等）多把"可扩展性"实现为**扩展点回调 / 钩子（hooks）+ 配置**，扩展被宿主内核调用——好比宿主是主厨、扩展是它偶尔叫来帮忙的临时工，主厨这个角色本身换不掉；而 dsh 把宿主本身也化成插件，扩展与内核在同一棵 Cordis 树上平权，连"主厨"这一格都是可替换的插件。传统方案里内核可做强不变量、上手快，但内核本身成了不可替换的中心，"换模型接缝/换会话存储/换 loop"都得动内核或穿 hook 参数；dsh 这条路的可验证差异点在能力接缝的三角色（Definition/Provider/Consumer）——一次 provider 替换即可改变整个产品，例如把 fs/subprocess provider 指向远程沙箱，Bash/PTY/LSP 就一起迁移、无需 fork `[verified]`（`docs/architecture.md:98-102`）。dsh 选这条路的第一性动机可回溯到其"模型是灵魂、一切皆可替换"的产品命题：若 loop 本身不可替换，"可替换性"就有一个不可动的中心，命题即破。不过这只是源码能证明的"差异"，不等于它在一切场景下都更优——社区就有"跨插件 DI 收益存疑""一切皆插件抬高了作者心智门槛"的声音`[claimed]`（`全网调研-社区认知地图.md` D 节）。
+同类 harness（Claude Code / Codex CLI / Pi 等）多把"可扩展性"实现为**扩展点回调 / 钩子（hooks）+ 配置**，扩展被宿主内核调用——好比宿主是主厨、扩展是它偶尔叫来帮忙的临时工，主厨这个角色本身换不掉；而 dsh 把宿主本身也化成插件，扩展与内核在同一棵 Cordis 树上平权，连"主厨"这一格都是可替换的插件。传统方案里内核可做强不变量、上手快，但内核本身成了不可替换的中心，"换模型接缝/换会话存储/换 loop"都得动内核或穿 hook 参数；dsh 这条路的可验证差异点在能力接缝的三角色（Definition/Provider/Consumer）——一次 provider 替换即可改变整个产品，例如把 fs/subprocess provider 指向远程沙箱，Bash/PTY（pseudo-terminal，伪终端：让程序像在真实终端里那样交互）/LSP（Language Server Protocol，语言服务器协议：编辑器与语言分析服务之间的通用协议）就一起迁移、无需 fork（另起一份分叉自行维护）`[verified]`（`docs/architecture.md:98-102`）。dsh 选这条路的第一性动机可回溯到其"模型是灵魂、一切皆可替换"的产品命题：若 loop 本身不可替换，"可替换性"就有一个不可动的中心，命题即破。不过这只是源码能证明的"差异"，不等于它在一切场景下都更优——社区就有"跨插件 DI（dependency injection，依赖注入：由框架把依赖'喂'给组件，而非组件自己去创建）收益存疑""一切皆插件抬高了作者心智门槛"的声音`[claimed]`（`全网调研-社区认知地图.md` D 节）。
 
 ## 七、仍存在的问题与局限
 

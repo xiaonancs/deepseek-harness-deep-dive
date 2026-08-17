@@ -1,12 +1,12 @@
 # 第 10 章 · LLM 适配器与流式词汇
 
-> 本章讲 `dsh` 如何把"模型输出"这件事抽象成一套 provider 中立的词汇：`StreamChunk` 原始流式协议、以内容块（content block）为单位的消息表示，以及一个抽象的 `LlmAdapter` 接缝。读完你能回答三个问题：模型的流式响应在 harness 内部长什么样、这套词汇凭什么敢自称"中立"、以及两个真实适配器（直连 fetch 的 `dsh-llm-deepseek` 与库封装的 `dsh-llm-pi-ai`）如何互为"设计验证孪生"。
+> 本章讲 `dsh` 如何把大语言模型（Large Language Model，简称 LLM，即会话式 AI 背后的那个模型）"输出的内容"这件事抽象成一套 provider 中立的词汇：`StreamChunk` 原始流式协议、以内容块（content block）为单位的消息表示，以及一个抽象的 `LlmAdapter` 接缝。读完你能回答三个问题：模型的流式响应在 harness 内部长什么样、这套词汇凭什么敢自称"中立"、以及两个真实适配器（直连 fetch 的 `dsh-llm-deepseek` 与库封装的 `dsh-llm-pi-ai`）如何互为"设计验证孪生"。
 
 证据等级沿用全书约定：`[verified]` 源码可证 · `[inferred]` 合理推断 · `[claimed]` 二手口径。
 
 ## 一、本质是什么
 
-`dsh` 的信念是"模型是 agent 的灵魂、一切皆可替换插件"。要让模型可替换，就必须先有一层不依赖任何具体 provider 的内部语言：agent loop、会话日志、所有插件都只说这门语言，具体某家 provider 的 SSE 分帧、字段命名、错误编码都被挡在一层适配器之后。
+`dsh` 的信念是"模型是 agent 的灵魂、一切皆可替换插件"。要让模型可替换，就必须先有一层不依赖任何具体 provider 的内部语言：agent loop、会话日志、所有插件都只说这门语言，具体某家 provider 的 SSE（Server-Sent Events，服务器发送事件，即服务器沿一条 HTTP 连接把结果一小段一小段推送过来的机制）分帧、字段命名、错误编码都被挡在一层适配器之后。
 
 打个比方：这就像联合国开会用一门统一的工作语言，各国代表说自己的母语，但都由同声传译转成这门共同语言，会场里的人无需懂任何一门外语就能跟上讨论。这里的"共同语言"由 `packages/llm` 定义，"同声传译"就是每家 provider 各自的适配器。
 
@@ -23,15 +23,15 @@
 一个 agent harness 面对模型输出，天然有几个难题：
 
 - **多块交错**。开启思维模式后，一次响应里 `reasoning` 与 `text`、甚至多个并行 `tool-call` 会交错到达——好比几个人同时往一条传送带上放零件，先后混在一起。消费者需要知道哪个增量属于哪个块。
-- **provider 词汇各异**。DeepSeek 走 OpenAI 兼容的 chat-completions SSE（SSE 即服务器逐条推送的事件流），`finish_reason` 是 `stop`/`length`/`tool_calls`；pi-ai 库有自己的一套事件（`text_delta`/`thinking_delta`/`toolcall_end`/`done`/`error`）。连"工具参数"这一项，一家给的是原始 JSON 串、另一家给的是已解析好的对象。
-- **错误来得方式不同**。有的 provider 在传输层直接抛（连接被拒、TLS 失败），有的把错误当作流内的一个终止事件送达——一个是"电话直接打不通"，一个是"电话接通了、对方说了句'出错了'再挂断"。
+- **provider 词汇各异**。DeepSeek 走 OpenAI 兼容的 chat-completions SSE，`finish_reason`（结束原因）是 `stop`/`length`/`tool_calls`；pi-ai 库有自己的一套事件（`text_delta`/`thinking_delta`/`toolcall_end`/`done`/`error`）。连"工具参数"这一项，一家给的是原始 JSON（JavaScript Object Notation，一种通用的文本数据格式）串、另一家给的是已解析好的对象。
+- **错误来得方式不同**。有的 provider 在传输层直接抛（连接被拒、TLS（Transport Layer Security，传输层安全，即 HTTPS 背后那层加密握手）失败），有的把错误当作流内的一个终止事件送达——一个是"电话直接打不通"，一个是"电话接通了、对方说了句'出错了'再挂断"。
 - **"中立"很容易被第一个实现污染**。如果只对着一个 provider 来定义所谓的"中立协议"，就会把那个 provider 的怪癖悄悄固化成事实标准，直到第二家接入才暴露，那时修复代价已经很高（`2026-06-13-twin-llm-adapters.md`）。
 
 ## 三、解决思路与方案
 
 ### 内容块作为唯一内部语言
 
-`dsh` 选择**自有词汇**：消息是内容块数组，翻译成本留在适配器里（`2026-06-11-content-block-vocabulary.md`）。这不是零成本方案——每个适配器都要付翻译代价——但换来的好处是：reasoning（思维过程）有了一个专门的落脚点、工具结果是结构化的嵌套块，而不必迁就某一家 chat-completions 把什么都压平成一层的扁平 shape（数据形状）。用一句话概括这个取舍：宁可让每个适配器多干点翻译活，也不让内核被某一家 API 的形状绑架。
+`dsh` 选择**自有词汇**：消息是内容块数组，翻译成本留在适配器里（`2026-06-11-content-block-vocabulary.md`）。这不是零成本方案——每个适配器都要付翻译代价——但换来的好处是：reasoning（思维过程）有了一个专门的落脚点、工具结果是结构化的嵌套块，而不必迁就某一家 chat-completions 把什么都压平成一层的扁平 shape（数据形状）。用一句话概括这个取舍：宁可让每个适配器多干点翻译活，也不让内核被某一家 API（Application Programming Interface，应用程序接口，即两段程序之间约定好的调用方式）的形状绑架。
 
 ### StreamChunk：一套七成员的原始协议
 
@@ -70,7 +70,7 @@ flowchart TD
 
 `dsh` 从第一天就对着同一份契约发布**两个**刻意采用不同内部实现的适配器（`2026-06-13-twin-llm-adapters.md`）`[verified]`：
 
-- `dsh-llm-deepseek`：直连 `fetch` + 仓内翻译，SSE 分帧委托给 `eventsource-parser`。孪生身份的关键是"自己拥有 fetch/translate 内部"，而非把活儿整个甩给某个完整的 provider SDK。
+- `dsh-llm-deepseek`：直连 `fetch` + 仓内翻译，SSE 分帧委托给 `eventsource-parser`。孪生身份的关键是"自己拥有 fetch/translate 内部"，而非把活儿整个甩给某个完整的 provider SDK（Software Development Kit，软件开发工具包，即厂商封装好、拿来即用的一套客户端库）。
 - `dsh-llm-pi-ai`：连的是同一个 DeepSeek 端点，但走 `@earendil-works/pi-ai` 库，用库自己的一套事件词汇。
 
 它们强制执行的规则是：**凡 `StreamChunk` 词汇无法为两个实现同时表达的东西，就是核心词汇的 bug**——当场发现，而非等到下一个 provider 接入才暴雷。道理很朴素：一句话如果只有一个人能听懂，那多半是这句话有歧义；能让两个说不同"方言"的实现都准确表达，才算真正中立。这一对孪生钉死了如今写在 `types.ts` 上的若干约定。
@@ -109,11 +109,11 @@ flowchart TB
 
 ### 三条铁约定，两条错误路径
 
-契约文档（`llm-streaming.md` "The adapter contract"）与 ADR 共同固定了这些不变量 `[verified]`：
+契约文档（`llm-streaming.md` "The adapter contract"）与 ADR（Architecture Decision Record，架构决策记录，即把一次关键设计取舍的来龙去脉写下来存档的文档）共同固定了这些不变量 `[verified]`：
 
 1. **`usage` 在 `finish` 前，`finish` 后无任何内容。**（`usage` 是这次调用花了多少 token 的用量统计。）稳健做法是把 finish/usage 攒着不发，等到 provider 的流末标记再一次性 flush（冲刷发出），这样即便用量数据拖在最后才来也能兜住。DeepSeek 适配器正是把 `block-end`、`usage`、`finish` 全部推迟到 `[DONE]` 哨兵才发出（`translate.ts:101-118`）。
 2. **工具调用 `arguments` 全程是原始 JSON 串。** 参数片段经 `argumentsDelta` 一段段流式到达；provider 若返回的是已解析对象，就得在 `block-end` 处重新字符串化。pi-ai 恰好返回解析后的对象，于是在 `toolcall_end` 处 `JSON.stringify(event.toolCall.arguments)` 转回字符串（`stream.ts:184`）——相当于把别人已经拆开的包裹，按内核的要求原样再包回去。
-3. **两条被认可的错误路径，一个 `LlmFailure` 类型。** 失败要么从 `stream()` **抛出**（传输/协议错误），要么以 `finish {kind:'error'|'aborted', failure}` **结束流**（provider 流内错误，适用于无法在中途抛异常的适配器）。这正是孪生暴露出的差异：DeepSeek 适配器在传输失败时抛 `LlmError`（`adapter.ts:246-258`，区分 `TIMEOUT`/`ABORTED`/`TRANSPORT`），而 pi-ai **从不中途抛**——它把失败当作一个 `error` 事件收下来，再映射成 error/aborted 的 finish chunk（`stream.ts:196-201`，代码注释直书"the harness protocol's other error-delivery style"）。两条路殊途同归，只是"报错的姿势"不同。
+3. **两条被认可的错误路径，一个 `LlmFailure` 类型。** 失败要么从 `stream()` **抛出**（传输/协议错误），要么以 `finish {kind:'error'|'aborted', failure}` **结束流**（provider 流内错误，适用于无法在中途抛异常的适配器）。这正是孪生暴露出的差异：DeepSeek 适配器在传输失败时抛 `LlmError`（`adapter.ts:246-258`，区分 `TIMEOUT`/`ABORTED`/`TRANSPORT`），而 pi-ai **从不中途抛**——它把失败当作一个 `error` 事件收下来，再映射成 error/aborted 的 finish chunk（`stream.ts:196-201`，代码注释直书"the harness's other sanctioned error path besides throwing"，意为"这是 harness 认可的、除抛出之外的另一条报错途径"）。两条路殊途同归，只是"报错的姿势"不同。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -181,9 +181,9 @@ flowchart TD
 
 ### 其余共享约定
 
-- **一次适配器调用 = 一次 provider 尝试。** 适配器把库自带的重试关掉（pi-ai `maxRetries: 0`，`adapter.ts:98`）；真要重试，由 agent 级恢复另开一个持久编号的回合去做。这样"重试"这件事只在一个地方发生，不会库里悄悄重一次、外层又重一次。
+- **一次适配器调用 = 一次 provider 尝试。** 适配器把库自带的重试关掉（pi-ai `maxRetries: 0`，`adapter.ts:97`）；真要重试，由 agent 级恢复另开一个持久编号的回合去做。这样"重试"这件事只在一个地方发生，不会库里悄悄重一次、外层又重一次。
 - **provider 停顿在传输层设界。** 两个远程适配器都暴露一个正有限的 `streamIdleTimeoutMs`，默认五分钟（`llm-deepseek/adapter.ts:89` `DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000`）；这个 idle watchdog（空闲看门狗）只在迭代器 `next()` 挂起、迟迟等不到下一段时才启动计时，超时就映射为 `TIMEOUT`，而更早发生的 caller abort 则仍保持 `ABORTED`。
-- **上下文溢出有唯一规范码。** 输入太长撑爆模型上下文窗口这件事，两个适配器都经 `isContextWindowExceededError()` 归到同一个 `CONTEXT_WINDOW_EXCEEDED`，无论错误是以抛出的 HTTP `LlmError` 形式来，还是以流内 finish 形式来（`llm-deepseek/adapter.ts:144`、`llm-pi-ai/stream.ts:73-86`）。
+- **上下文溢出有唯一规范码。** 输入太长撑爆模型上下文窗口这件事，两个适配器都经 `isContextWindowExceededError()` 归到同一个 `CONTEXT_WINDOW_EXCEEDED`，无论错误是以抛出的 HTTP（HyperText Transfer Protocol，超文本传输协议，即网页与接口请求走的那套网络协议）`LlmError` 形式来，还是以流内 finish 形式来（`llm-deepseek/adapter.ts:144`、`llm-pi-ai/stream.ts:73-86`）。
 - **空补全是可重试错误，不是静默成功。** 模型说了句"我说完了"（`stop` 收尾）却一个内容块都没吐出，这种"交白卷"被两个适配器都映射成 `EMPTY_RESPONSE` 的 error finish（`translate.ts:110-115`、`stream.ts:92-99`），而不是当成一次正常的空回答蒙混过去。
 - **每个 provider HTTP 请求都带 app 归属头。** 两适配器都发 `attributionHeaders()`（以 `User-Agent` 为基线，`llm-deepseek/adapter.ts:287`），并有线缆级测试为证。
 - **replay 状态归适配器所有。** 成功的 finish 可以捎带一段无损 JSON 的 `replayState`（供适配器日后重放用）；`LlmRuntime` 只在历史里那次的 provider 与当前目标 provider 恰好注册到**同一个适配器实例**时，才把它交回去（`index.ts:823` `forAdapter` 过滤）——换了适配器就作废，免得把一家的内部状态喂给另一家。
@@ -198,7 +198,7 @@ flowchart TD
 
 ## 六、竞品/横向对比
 
-`StreamChunk` 的定位，类似 Vercel AI SDK 里的 stream part、或 LangChain 的 streaming callback：大家都想给"多 provider"这件事一个统一的增量协议，好让上层只对一套接口编程。HN 讨论里，`dsh` 工具调用所用的严格 JSON schema 得到好评（有人称其超过 Codex）`[claimed]`（社区认知地图 E 节）。
+`StreamChunk` 的定位，类似 Vercel AI SDK 里的 stream part、或 LangChain 的 streaming callback：大家都想给"多 provider"这件事一个统一的增量协议，好让上层只对一套接口编程。HN（Hacker News，一个技术圈常去的新闻/讨论社区）讨论里，`dsh` 工具调用所用的严格 JSON schema 得到好评（有人称其超过 Codex）`[claimed]`（社区认知地图 E 节）。
 
 要比出个高下，得先说清语境。就 `dsh` 自家的目标（自家模型的官方 harness + 可替换接缝）而言，它这套"闭合 `StreamChunk` 的编译期穷尽 + reasoning 一等公民 + replay 状态归属清晰"再叠加双真实孪生的机制化验证，比通用 SDK 靠海量集成堆出来的中立性更贴合——后者那种"最大公约数"式抽象往往把 reasoning、工具参数这些细节压平。但这个"更优"只在此语境成立、不构成通用结论：一旦 `dsh` 要广接第三方 provider，Vercel AI SDK / LangChain 成熟的集成面反而可能反超（机制对比源码可证 `types.ts:291`/ADR `[inferred]`，竞品口碑 `[claimed]`）。
 
@@ -231,7 +231,7 @@ flowchart TD
 - `packages/llm/llm/src/never.ts:16` — `assertNever`（闭合 vs 开放联合区分）
 - `packages/llm/llm-deepseek/src/adapter.ts:158` — `DeepSeekAdapter`（`:246` 三类抛出、`:287` 归属头、`:89` idle 默认 5 分钟）
 - `packages/llm/llm-deepseek/src/translate.ts:31/:53/:101/:110` — finish/usage 映射、`[DONE]` 集中发射、EMPTY_RESPONSE
-- `packages/llm/llm-pi-ai/src/adapter.ts:186` — `PiAiAdapter`（`:98` maxRetries 0、`:277` 不支持 stop）
+- `packages/llm/llm-pi-ai/src/adapter.ts:186` — `PiAiAdapter`（`:97` maxRetries 0、`:277` 不支持 stop）
 - `packages/llm/llm-pi-ai/src/stream.ts:124` — `toStreamChunks`（`:184` 回填参数字符串、`:196` error 事件转 finish、`:31` 字符串分类）
 - `.agents/notes/implemented/architecture/2026-06-13-twin-llm-adapters.md` — 双适配器设计验证孪生 ADR
 - `.agents/notes/implemented/architecture/2026-06-11-content-block-vocabulary.md` — 内容块词汇 ADR

@@ -1,6 +1,6 @@
 # 第 08 章 · 系统提示词与工具 Schema 组装
 
-> 本章讲一件事：模型每一步"看到什么"是怎么被拼出来的。读完你能回答——系统提示词的各段落、工具的 JSON Schema、动态运行时上下文、模板变量，分别由谁贡献、按什么顺序在每一步合流成一次模型请求；`ctx.systemPrompt` 这个注册表服务的四类注册与一次瀑布组装如何配合；以及为什么"每个包的 README 必须写 Model Experience"、工具 Schema catalog 为何要靠"启动并采集"而非解析源码来生成门禁。
+> 本章讲一件事：模型每一步"看到什么"是怎么被拼出来的。读完你能回答——系统提示词的各段落、工具的 JSON Schema（一种用 JSON 描述"数据长什么样"的规范：有哪些字段、各是什么类型、哪些必填）、动态运行时上下文、模板变量，分别由谁贡献、按什么顺序在每一步合流成一次模型请求；`ctx.systemPrompt` 这个注册表服务的四类注册与一次瀑布组装如何配合；以及为什么"每个包的 README 必须写 Model Experience"、工具 Schema catalog 为何要靠"启动并采集"而非解析源码来生成门禁。
 
 ## 一、本质是什么
 
@@ -15,7 +15,7 @@
 - **tools**（tool-schema provider）——本次组装里模型可见的工具 Schema 集合（每个工具长什么样、收哪些参数）；
 - **variable**——段落文本里用 `{{name}}` 引用的模板变量，组装时才被填进实际值。
 
-这与总纲的架构命题一致：连"模型看到的提示词"本身都不是内核特权，而是由插件贡献、可组合、可按作用域覆盖的东西。`SystemPrompt` 自己只握着两段最基础的文本——固定的 harness 身份行，和留给部署方填 persona 的一个槽位——其余全部来自贡献者 [verified]（`index.ts:356-370`）。对使用者来说，这意味着想改模型看到的某段话，改的是"拥有那段话的那个插件"，而不是去动一个中心大模板。
+这与总纲的架构命题一致：连"模型看到的提示词"本身都不是内核特权，而是由插件贡献、可组合、可按作用域覆盖的东西。`SystemPrompt` 自己只握着两段最基础的文本——固定的 harness 身份行，和留给部署方填 persona（人设，即部署方赋予模型的身份与说话风格设定）的一个槽位——其余全部来自贡献者 [verified]（`index.ts:356-370`）。对使用者来说，这意味着想改模型看到的某段话，改的是"拥有那段话的那个插件"，而不是去动一个中心大模板。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -97,7 +97,7 @@ flowchart TD
 
 ## 四、实现细节关键点
 
-**每步一次组装。** 模型每走一步，都会重新组装一次。agent-loop 在 `preStep` 里调用 `this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))` [verified]（`packages/core/agent-loop/src/agent.ts:230`）；随后 `renderContextSections` + `joinContextSections` 把动态上下文投影成一条 user 角色的快照消息（`runtimeContext.project`，`agent.ts:232-233`），`step()` 里 `renderPrompt(assembly)` 把各段落插值成 system 字符串 [verified]（`agent.ts:337`），`assembly.tools` 则作为一个独立的 wire 字段随请求发出。这里正是"model-visible ⟺ logged"的落点：现场上下文被做成一条消息事件，而不是悄悄拼进 prompt，所以事后能从日志一字不差地重建。
+**每步一次组装。** 模型每走一步，都会重新组装一次。agent-loop 在 `preStep` 里调用 `this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))` [verified]（`packages/core/agent-loop/src/agent.ts:230`）；随后 `renderContextSections` + `joinContextSections` 把动态上下文投影成一条 user 角色的快照消息（`runtimeContext.project`，`agent.ts:232-233`），`step()` 里 `renderPrompt(assembly)` 把各段落插值成 system 字符串 [verified]（`agent.ts:337`），`assembly.tools` 则作为一个独立的 wire（传输层，即实际发给模型那一层）字段随请求发给 LLM（Large Language Model，大语言模型；图里的 `ctx.llm` 就是它的服务入口）。这里正是"model-visible ⟺ logged"的落点：现场上下文被做成一条消息事件，而不是悄悄拼进 prompt，所以事后能从日志一字不差地重建。
 
 **严格变量插值。** `renderPrompt` 只认完整成对的 `{{name}}`，名字还须匹配 `^[a-z][a-z0-9_]*$`；遇到未知引用（用 `Object.hasOwn` 查，像 `{{constructor}}` 这种原型上的名字也算未知）、已注册但取值为 `undefined`、或残缺不成对的组，一律直接抛错；只有孤立的 `{{`（后面根本没有 `}}`）才当普通字面量原样透传，而且替换进去的值不会被再扫一遍（避免值里恰好含 `{{…}}` 被二次解释）[verified]（`index.ts:212-295`）。这是"误配 fail-loud"（配错就当场大声报错）在提示词层的体现——宁可让这一步失败，也不把一段畸形提示词发给模型。
 
@@ -140,11 +140,11 @@ sequenceDiagram
 
 前面讲的都是机制本身；这两者则是把这些机制"制度化"、用自动检查兜住的两道门禁。
 
-**工具 Schema catalog（`docs/tool-catalog.md`）**：它是一份清单，列出每个随发行插件贡献给 `ctx.tools` 的工具的 name/description/JSON-Schema。关键不在这份清单长什么样，而在它怎么生成的——`scripts/gen-tool-catalog.ts` 会真的把每个工具插件**启动**到一个真实 Context 上，再调 `ctx.tools.schemas()` 读出模型运行时真正会收到的 `ToolSchema[]`，而不是去解析源码"看它写了什么" [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。一句话：以运行时真值为准，不以代码字面为准。之所以不能走"纯 AST 遍历源码"这条更省事的路，根子在于工具 Schema **静态不可知**——`tool-todo` 的 `enum` 是运行时 spread、description 靠字符串拼接、`tool-subagent` 的名字来自 `config.toolName`、MCP 插件更是直接注册裸 JSON Schema，硬解析源码只会产出"说谎的文档"；代价是无源码声明集可枚举、新工具包可能被漏掉，于是用**完整性守卫** `assertManifestComplete`（glob `packages/*/tool-*`、任何包缺席 boot 清单即 hard-fail）把 AST 免费获得的"不漏"属性重建回来 [verified]（`gen-tool-catalog.ts:581-588,622-623`）。
+**工具 Schema catalog（`docs/tool-catalog.md`）**：它是一份清单，列出每个随发行插件贡献给 `ctx.tools` 的工具的 name/description/JSON-Schema。关键不在这份清单长什么样，而在它怎么生成的——`scripts/gen-tool-catalog.ts` 会真的把每个工具插件**启动**到一个真实 Context 上，再调 `ctx.tools.schemas()` 读出模型运行时真正会收到的 `ToolSchema[]`，而不是去解析源码"看它写了什么" [verified]（2026-07-02 note；`gen-tool-catalog.ts:622-634`）。一句话：以运行时真值为准，不以代码字面为准。之所以不能走"纯 AST（Abstract Syntax Tree，抽象语法树，即把源码解析成的树状结构，可据此静态分析代码）遍历源码"这条更省事的路，根子在于工具 Schema **静态不可知**——`tool-todo` 的 `enum`（枚举，取值被限定为一组固定选项）是运行时 spread（展开拼接，把一个集合的元素在运行时铺进另一处）、description 靠字符串拼接、`tool-subagent` 的名字来自 `config.toolName`、MCP（Model Context Protocol，模型上下文协议）插件更是直接注册裸 JSON Schema，硬解析源码只会产出"说谎的文档"；代价是无源码声明集可枚举、新工具包可能被漏掉，于是用**完整性守卫** `assertManifestComplete`（glob `packages/*/tool-*`，即用通配符批量匹配这些目录；任何包缺席 boot 清单即 hard-fail）把 AST 免费获得的"不漏"属性重建回来 [verified]（`gen-tool-catalog.ts:581-588,622-623`）。
 
-生成出来的这份清单还会被 `verify-tool-catalog`（`doc-sync` 里的一环）持续验鲜：只要 Schema 变了而提交进仓库的文件没跟着更新，CI 就失败；有新的 `tool-*` 包没被收进清单，完整性守卫会直接报错 [verified]（tool-catalog.md:8）。这与 cordis catalog 形成对照——后者用纯 AST pass（静态扫源码）就够，因为事件名/服务名都是能从源码回溯的静态字符串字面量。同一条"验实际的世界、而不是听它自述"的纪律，针对两类文档各自挑了合适的技术。
+生成出来的这份清单还会被 `verify-tool-catalog`（`doc-sync` 里的一环）持续验鲜：只要 Schema 变了而提交进仓库的文件没跟着更新，CI（Continuous Integration，持续集成，即每次提交都自动跑一遍检查/测试）就失败；有新的 `tool-*` 包没被收进清单，完整性守卫会直接报错 [verified]（tool-catalog.md:8）。这与 cordis catalog 形成对照——后者用纯 AST pass（静态扫源码）就够，因为事件名/服务名都是能从源码回溯的静态字符串字面量。同一条"验实际的世界、而不是听它自述"的纪律，针对两类文档各自挑了合适的技术。
 
-**Model Experience 契约（每个包的 README 必写）**：2026-07-12 note 规定，凡是带"模型可见/与模型邻接"契约的 workspace 包，其 README 结尾都必须有一段 `## Model Experience`，且放在 `## Known Limitations` 之前 [verified]（`2026-07-12-...contract.md`）。这段按三种情形分类写：真正影响模型输入的，用结构化写法——"每个上下文面一个 H3 + 三个有序 H4：What the model sees（模型看到什么）/ Token effect（占多少 token）/ KV Cache effect（对缓存前缀的影响）"；对模型零影响或只是纯转发的，用审计过的固定短句（`None, as …` / `Indirectly, through …`）交代清楚；与模型完全无关的通用包，则经 `NO_MODEL_EXPERIENCE_SECTION` 显式豁免。`verify-package-readme-model-experience` 会在 doc-sync 里逐项校验：分类对不对、段落次序对不对、字段的深度与顺序对不对、逐字内容是否用 H5 承载、以及到工具 catalog 的锚链接是否有效 [verified]（cookbook adding-a-package.md:105-107）。system-prompt 包自己的 README 就作了示范，写了 System prompt 与 Tool schemas 两个 H3 [verified]（README:49-83）。
+**Model Experience 契约（每个包的 README 必写）**：2026-07-12 note 规定，凡是带"模型可见/与模型邻接"契约的 workspace 包，其 README 结尾都必须有一段 `## Model Experience`，且放在 `## Known Limitations` 之前 [verified]（`2026-07-12-...contract.md`）。这段按三种情形分类写：真正影响模型输入的，用结构化写法——"每个上下文面一个 H3 + 三个有序 H4：What the model sees（模型看到什么）/ Token effect（占多少 token）/ KV Cache effect（key-value cache，键值缓存；指对模型推理时可复用的缓存前缀的影响）"；对模型零影响或只是纯转发的，用审计过的固定短句（`None, as …` / `Indirectly, through …`）交代清楚；与模型完全无关的通用包，则经 `NO_MODEL_EXPERIENCE_SECTION` 显式豁免。`verify-package-readme-model-experience` 会在 doc-sync 里逐项校验：分类对不对、段落次序对不对、字段的深度与顺序对不对、逐字内容是否用 H5 承载、以及到工具 catalog 的锚链接是否有效 [verified]（cookbook adding-a-package.md:105-107）。system-prompt 包自己的 README 就作了示范，写了 System prompt 与 Tool schemas 两个 H3 [verified]（README:49-83）。
 
 它想解决的痛点是：在插件架构下，"到底哪些 token 进了模型请求、进的条件是什么、会留存多久、KV-cache 前缀稳不稳"这些问题极难审计——consumer 可能把后端结果转成一条 tool 消息、policy 插件可能把一次成功悄悄换成错误、compaction 可能删掉旧历史、agent-scoped 注册可能只动其中一个 agent。有了逐包一段的结构化契约，审阅者从任意一个与模型邻接的包读起，就能看清它对模型输入贡献了什么，而不必先在脑子里把整张插件关系图重建一遍。
 
@@ -174,7 +174,7 @@ flowchart TD
 
 ## 七、竞品/横向对比与仍存的局限
 
-社区对 dsh 工具调用采用严格 JSON Schema 有正面评价（HN 上 JonChesterfield 称其超过 Codex）[claimed]（社区认知地图 E 节）。但那更多是外在观感；从本章看到的机制层面，真正的区别在于：**提示词与 Schema 都被从"内核特权"降格为可组合、可按作用域覆盖、可用门禁验鲜的普通插件贡献**。不过这并不等于"注册表 + 作用域瀑布全面更优"：分散所有权与门禁是应对"多 agent、可替换插件、大规模并行开发"的必要代价，而对只跑单一 persona、固定工具集的小型部署，中心模板的简单未必更差——机制层已 [verified]，"更优"则是语境依赖的 [inferred] 判断。
+社区对 dsh 工具调用采用严格 JSON Schema 有正面评价（HN（Hacker News，一个技术圈常逛的新闻与讨论社区）上 JonChesterfield 称其超过 Codex）[claimed]（社区认知地图 E 节）。但那更多是外在观感；从本章看到的机制层面，真正的区别在于：**提示词与 Schema 都被从"内核特权"降格为可组合、可按作用域覆盖、可用门禁验鲜的普通插件贡献**。不过这并不等于"注册表 + 作用域瀑布全面更优"：分散所有权与门禁是应对"多 agent、可替换插件、大规模并行开发"的必要代价，而对只跑单一 persona、固定工具集的小型部署，中心模板的简单未必更差——机制层已 [verified]，"更优"则是语境依赖的 [inferred] 判断。
 
 **仍存的局限**（以下均 [verified] 于 README 已知局限）：`{{…}}` 没有字面量转义语法（想在提示词里原样输出两个花括号目前没有官方写法），这一项被 deferred，等真有 prompt 需要再补；`toolOrder` 误配要延后到首轮 assemble 才报；同 order 段落的 tie-break 靠注册顺序、依赖波段约定而非强制规范化；部署方也没有一个面向终端用户的 prompt 编辑 API——想改提示词文本，只能走 config/composition，或者去改拥有那段文字的那个插件。
 

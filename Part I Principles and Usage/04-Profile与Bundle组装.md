@@ -12,7 +12,7 @@
 
 其一，**没有特权内核**。模型适配器、工具注册表、会话日志、agent loop 本身都是插件行（row），全部可从配置替换（docs/architecture.md:11）。组装层不例外地对待它们——它不认识"核心"，只认识一串带 `id` 的 entry。
 
-其二，**最终形态是数据，不是代码**。组装的产物是一份 `EntryOptions[]`（cordis include 的 entry 列表），每个 entry 是 `{ id, name, config, disabled, ... }` 这样的普通 JSON 数据（vendor/include/src/index.ts:58）。这里的 entry（行）可以理解成清单上的一行："加载哪个插件、给它什么配置、开还是关"。一整棵运行树，说到底就是这样一份清单。既然是数据而非代码，"这台机器实际 boot 的树"就可以被完整地离线打印出来——这正是 `--dump-config` 的基础。对使用者来说，这意味着你无需真的跑起来、也能先看清这次到底会加载成什么样子。
+其二，**最终形态是数据，不是代码**。组装的产物是一份 `EntryOptions[]`（cordis include 的 entry 列表），每个 entry 是 `{ id, name, config, disabled, ... }` 这样的普通 JSON（JavaScript Object Notation，一种通用的、人可读的数据格式）数据（vendor/include/src/index.ts:58-59）。这里的 entry（行）可以理解成清单上的一行："加载哪个插件、给它什么配置、开还是关"。一整棵运行树，说到底就是这样一份清单。既然是数据而非代码，"这台机器实际 boot 的树"就可以被完整地离线打印出来——这正是 `--dump-config` 的基础。对使用者来说，这意味着你无需真的跑起来、也能先看清这次到底会加载成什么样子。
 
 三个关键名词，各有一处 `package.json` 声明来锚定身份（docs/architecture.md:23）：
 
@@ -46,7 +46,7 @@ dsh 的选择是**分层覆盖**：把共享核心沉到最底层的 bundle，�
 1. **profile 列出的每个 bundle**，按 `dsh.profile.bundles` 的顺序（`dsh-base` 永远第一层）。
 2. **profile 自己的 `cordis.patch.yml`**（`$DSH_HOME/profiles/<name>/`）。
 3. **home 级 `cordis.patch.yml`**（`$DSH_HOME/`）——机器级偏好，对所有 profile 生效，故排在 per-profile 之后、**反而更高**。
-4. **`--patch` 覆盖层**，按 argv 顺序（可重复）。
+4. **`--patch` 覆盖层**，按 argv（argument vector，命令行参数数组，即你在命令行上敲入参数的先后顺序）顺序（可重复）。
 
 后写覆盖先写，逐行结算。这里有个易被误读的点：home 层"outranks"（压过）per-profile 层，不是因为它更"重要"，纯粹因为它应用得更晚（app-boot/README.md:43）——就像同一张纸上后写的字盖住先写的，跟谁更权威无关，只跟先后有关。
 
@@ -76,11 +76,11 @@ flowchart TD
 
 `PROFILE_TEMPLATES` 把两个内置模板钉死（profile.ts:114-117）：`web = [dsh-base, dsh-web-app]`，`headless = [dsh-base, dsh-headless]`。可见两个模板都以 `dsh-base` 打底，只在第二个 bundle 上分道扬镳。名字不在模板里的 profile 用 `DEFAULT_PROFILE_BUNDLES = [dsh-base]` 起步（profile.ts:125），并要显式用 `dsh plugin` 命令创建。`loadProfile` 对每个 bundle 名做两锚解析（先在 dsh 安装目录找、找不到再去 profile 目录找），列出的包若没有 `dsh.bundle` 声明就 fail loud（直接报错停下，而不是默默略过）（profile.ts:388-397）。
 
-**`dsh-base`——每个 profile 的第一层，一条 `insert` 铺满核心行**（base/cordis.patch.yml）。它塞进的是 harness 的"共享核心"，也就是无论哪种形态都少不了的那批基础设施：LLM 适配器（`llm`、`llm-pi-ai`）、默认模型选择（`agent-default-model`，`provider: deepseek-official / model: deepseek-v4-flash`）、会话与持久化（`session`、`session-persistence-jsonl`）、工具栈（`tool-bash`/`tool-fs`/`tool-skill`/`tool-subagent` 等）、沙箱与审批策略（`sandbox`、`sandbox-policy`、`approval`、`permission`）、设置与凭据（`settings`、`credentials`）、遥测（`session-telemetry-otel`，默认 DISABLED）。一个巧思：shell 栈按平台在各自行上门禁（按操作系统决定这行开不开）——`bash-sandbox`/`tool-bash` 带 `disabled: !!js process.platform === 'win32'`（在 Windows 上关掉），孪生的 `pwsh-sandbox`/`tool-pwsh` 用反向表达式，于是同一份 patch 发到任何机器，每台主机恰好留下一套能用的 shell（base/README.md:6）。Codex 与 Claude Code provider 以 dormant（休眠、装了但默认不激活）方式加载。
+**`dsh-base`——每个 profile 的第一层，一条 `insert` 铺满核心行**（base/cordis.patch.yml）。它塞进的是 harness 的"共享核心"，也就是无论哪种形态都少不了的那批基础设施：LLM 适配器（`llm`、`llm-pi-ai`）、默认模型选择（`agent-default-model`，`provider: deepseek-official / model: deepseek-v4-flash`）、会话与持久化（`session`、`session-persistence-jsonl`）、工具栈（`tool-bash`/`tool-fs`/`tool-skill`/`tool-subagent` 等）、沙箱与审批策略（`sandbox`、`sandbox-policy`、`approval`、`permission`）、设置与凭据（`settings`、`credentials`）、遥测（`session-telemetry-otel`，默认 DISABLED）。一个巧思：shell 栈按平台在各自行上门禁（按操作系统决定这行开不开）——`bash-sandbox`/`tool-bash` 带 `disabled: !!js process.platform === 'win32'`（在 Windows 上关掉），孪生的 `pwsh-sandbox`/`tool-pwsh` 用反向表达式，于是同一份 patch 发到任何机器，每台主机恰好留下一套能用的 shell（base/README.md:7）。Codex 与 Claude Code provider 以 dormant（休眠、装了但默认不激活）方式加载。
 
 **`dsh-web-app`——骑在 base 之上**（web-app/cordis.patch.yml）。它做三件事：(1) 覆写 base 的少数行——设 `system-prompt.persona` 的编码人格、`hmr.disabled: true`（关掉热重载）；(2) `insert` 一大批 web 专属行——webserver、api-gateway、workspace、投影缓存、存储，以及整个浏览器插件花名册（`ui-*` 系列）和 `web-runtime` 胶水插件；(3) 关键的一步：把**属于"单个 agent"的行整体 `disabled`**（`tool-bash`、`tool-fs`、`tool-skill`、`tool-subagent`、`plan-mode` 等），让它们改由 per-session（每个会话各自一份）的 agent preset 来挂（web-app/README.md、web-app/cordis.patch.yml 末段）。为什么是"禁用而非删除"？注释给了理由：base 是共享的，若在 overlay 里把行删掉，一旦有人重排组装顺序，这些行可能悄悄复活；而"关掉"是一个明确写下的状态，不会因重排而反悔。还有一点分界：注册表类的进程单例——即整个进程只该有一份的东西，如 `goals`、`subagents`、`skill` 注册表、`token-meter`——明确**留在 host 平面**，只把面向模型的工具行下沉到会话。为什么这样分？因为每个会话可以有自己的工具集，但"全进程共用一本账"的登记簿只能有一份，不能每开一个会话就复制一份。
 
-**`dsh-headless`——同样骑在 base 之上，但极简**（headless/cordis.patch.yml）。它只做几件事：设人格、关 HMR、挂 Code Mode 的 worker（`code-runtime`）、插入 `headless-runner`。它**不挂任何 Host、HTTP server、Web runtime 或浏览器插件**（headless/README.md:5）——没有界面、没有服务端口，就是一个跑完即走的命令行 runner。它的工作流程很直白：runner 在 Loader settle（所有插件挂载稳定）后读 `ctx.agentDefaultModel`，通过 `ctx.agents` 建一个持久化 Agent，把命令行上给的那段话（位置参数）当成一条普通 user message 提交，等对话静默下来后把最后一条非空的 assistant 文本写到 stdout，再经 `ctx.appExit` 请求退出（headless/README.md:7）。对使用者来说，这就是"敲一句话进去、拿一句回答出来"的一次性用法。
+**`dsh-headless`——同样骑在 base 之上，但极简**（headless/cordis.patch.yml）。它只做几件事：设人格、关 HMR（Hot Module Replacement，热模块替换/热重载：不重启进程就换掉运行中的模块，一次性 runner 用不上，故关掉）、挂 Code Mode 的 worker（`code-runtime`）、插入 `headless-runner`。它**不挂任何 Host、HTTP（HyperText Transfer Protocol，超文本传输协议：网页请求/响应所走的协议）server、Web runtime 或浏览器插件**（headless/README.md:5）——没有界面、没有服务端口，就是一个跑完即走的命令行 runner。它的工作流程很直白：runner 在 Loader settle（所有插件挂载稳定）后读 `ctx.agentDefaultModel`，通过 `ctx.agents` 建一个持久化 Agent，把命令行上给的那段话（位置参数）当成一条普通 user message 提交，等对话静默下来后把最后一条非空的 assistant 文本写到 stdout（standard output，标准输出：程序默认的输出通道，通常就是终端屏幕），再经 `ctx.appExit` 请求退出（headless/README.md:7）。对使用者来说，这就是"敲一句话进去、拿一句回答出来"的一次性用法。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -108,7 +108,7 @@ flowchart LR
 
 > 图注：同一个 `dsh-base` 被两个 profile 共享为第一层，形态差异各自叠一层。这证明"共享核心零重复"——web 与 headless 的分歧只发生在第二层。
 
-**离线复现：`dsh --dump-config`。** `dsh --profile web --dump-config` 打印出这台机器实际会 boot 的树（docs/architecture.md:31-33）。它走 `renderConfigDump`：用 include 自己的 parser 和 patch 算法离线合成 base 配置与带标签的 overlay 层，**不 boot、不求值 `!!js`**（不真正启动、也不去执行那些平台判断表达式），结果等于 `boot()` 会挂的东西；每段共享同一源文件和同一组 patch 层的行前面，加一行 `# ==` 注释标明这批行是从哪儿来的，整个输出仍是一份可以直接加载的文档（app-boot/README.md:22）。这就好比"预览打印稿"——你看到的就是真机会加载的样子，且能顺手改。`--dump-default-config` 则省掉用户层与 overlay，只打印 bundle 层——当自己的 `cordis.patch.yml` 写坏、进程起不来时，用它看看"没被我改过的原样"长什么样，是一个恢复诊断的手段（dump-config.ts:25）。打印出的任何一行，都能被你自己的 patch 替换（docs/architecture.md:35）。
+**离线复现：`dsh --dump-config`。** `dsh --profile web --dump-config` 打印出这台机器实际会 boot 的树（docs/architecture.md:31-33）。它走 `renderConfigDump`：用 include 自己的 parser 和 patch 算法离线合成 base 配置与带标签的 overlay 层，**不 boot、不求值 `!!js`**（不真正启动、也不去执行那些平台判断表达式），结果等于 `boot()` 会挂的东西；每段共享同一源文件和同一组 patch 层的行前面，加一行 `# ==` 注释标明这批行是从哪儿来的，整个输出仍是一份可以直接加载的 YAML（YAML Ain't Markup Language，一种以缩进表达层级的配置文件格式，`cordis.yml`/`cordis.patch.yml` 用的就是它）文档（app-boot/README.md:22）。这就好比"预览打印稿"——你看到的就是真机会加载的样子，且能顺手改。`--dump-default-config` 则省掉用户层与 overlay，只打印 bundle 层——当自己的 `cordis.patch.yml` 写坏、进程起不来时，用它看看"没被我改过的原样"长什么样，是一个恢复诊断的手段（dump-config.ts:25）。打印出的任何一行，都能被你自己的 patch 替换（docs/architecture.md:35）。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -161,14 +161,14 @@ flowchart TD
 
 ## 六、竞品/横向对比
 
-主流 harness 的配置策略大致分两类：Claude Code / Codex 式的"settings.json + 扁平 MCP/工具开关"直观、上手快、生态工具多，但能力边界由宿主写死，替换核心组件通常要改代码或等官方支持；传统框架式"一份 config + 代码内条件分支"则简单，却让组装逻辑不可见、不可 dump `[claimed]`（B/C 竞品细节为二手口径）。dsh 的"profile→bundle→patch 分层、运行树=可 dump 的数据"就其"模型是灵魂、一切皆可替换插件"的目标而言是自洽解——它把可替换性从"宿主给的开关"升维成"配置行的替换"，`--dump-config` 让这份可替换性可离线审计；代价是心智门槛更高（要懂 Cordis entry 与 patch 语义）、且 patch 整替不深合并。这也与社区把 dsh 的价值定位在"可替换性/生态"而非"绑定自家模型"一致 `[verified]`（dsh 侧机制：docs/architecture.md、profile-boot.ts）。当然，若大多数用户其实只想要"几个开关"，dsh 的分层就可能被感知为过度工程、真实使用退化为"照抄官方模板、从不改 patch"。
+主流 harness 的配置策略大致分两类：Claude Code / Codex 式的"settings.json + 扁平 MCP（Model Context Protocol，模型上下文协议：让外部工具/数据源以标准方式接入模型的开放协议）/工具开关"直观、上手快、生态工具多，但能力边界由宿主写死，替换核心组件通常要改代码或等官方支持；传统框架式"一份 config + 代码内条件分支"则简单，却让组装逻辑不可见、不可 dump `[claimed]`（B/C 竞品细节为二手口径）。dsh 的"profile→bundle→patch 分层、运行树=可 dump 的数据"就其"模型是灵魂、一切皆可替换插件"的目标而言是自洽解——它把可替换性从"宿主给的开关"升维成"配置行的替换"，`--dump-config` 让这份可替换性可离线审计；代价是心智门槛更高（要懂 Cordis entry 与 patch 语义）、且 patch 整替不深合并。这也与社区把 dsh 的价值定位在"可替换性/生态"而非"绑定自家模型"一致 `[verified]`（dsh 侧机制：docs/architecture.md、profile-boot.ts）。当然，若大多数用户其实只想要"几个开关"，dsh 的分层就可能被感知为过度工程、真实使用退化为"照抄官方模板、从不改 patch"。
 
 ## 七、仍存在的问题与局限
 
 三处已在 README 明记为 deferred 的边界，都源自组装机制本身：
 
-- **patch 整替、不深合并**（app-boot/README.md:60；base/README.md:20）。profile 覆写一行时必须重述它要保留的每个字段，否则没写到的字段会连带被清空。举个直觉例子：想只改 `config` 里的一个开关，却得把这行 `config` 的其余字段原样抄一遍，漏抄一个就丢一个。字段一多，覆写就变脆、易出错。不过这更像刻意取舍而非缺陷：`applyEntryPatches` 只保留"整替顶层键 / insert"两条规则，才能守住"dump 等于 boot、移除 patch 能干净回退"这两个组装不变量，而深合并会同时威胁它们——README 也是把它列为"Known Limitations"（"there is no deep-merge layer"）而非 bug`[verified]`（vendor/include/src/index.ts:121-124；app-boot/README.md:60）。
-- **bare 包解析依赖 Loader 内部**（app-boot/README.md:57）。"bare 包"指像 `some-pkg` 这样只写包名、不带路径的写法。生产 bin 需要 Loader 的可选 native helper 才能把它定位到磁盘；一个自带模块解析的 in-process 调用方若没有这个 helper，就只能改用可解析的相对路径 / `file:` specifier。这给"想在任意环境里嵌入 dsh"添了一点不便。
+- **patch 整替、不深合并**（app-boot/README.md:60；base/README.md:21）。profile 覆写一行时必须重述它要保留的每个字段，否则没写到的字段会连带被清空。举个直觉例子：想只改 `config` 里的一个开关，却得把这行 `config` 的其余字段原样抄一遍，漏抄一个就丢一个。字段一多，覆写就变脆、易出错。不过这更像刻意取舍而非缺陷：`applyEntryPatches` 只保留"整替顶层键 / insert"两条规则，才能守住"dump 等于 boot、移除 patch 能干净回退"这两个组装不变量，而深合并会同时威胁它们——README 也是把它列为"Known Limitations"（"there is no deep-merge layer"）而非 bug`[verified]`（vendor/include/src/index.ts:121-124；app-boot/README.md:60）。
+- **bare 包解析依赖 Loader 内部**（app-boot/README.md:57）。"bare 包"指像 `some-pkg` 这样只写包名、不带路径的写法。生产 bin（binary，可执行程序）需要 Loader 的可选 native helper（原生辅助模块）才能把它定位到磁盘；一个自带模块解析的 in-process（同进程内嵌）调用方若没有这个 helper，就只能改用可解析的相对路径 / `file:` specifier（说明符，即明确写清位置的引用字符串）。这给"想在任意环境里嵌入 dsh"添了一点不便。
 - **home 层对所有 profile 生效**。这是设计（它本就是机器级偏好），但也有副作用：一条写在 home `cordis.patch.yml` 里、你本只想影响 web 的 patch，会同时命中 headless。正确做法是把只针对某 profile 的改动放进 per-profile 层；可顺序上 per-profile 反而排在 home 之前（更低），所以一个"想被 home 覆盖"的 profile 默认值需要额外留个心。
 
 ## 小结与衔接
@@ -187,7 +187,7 @@ flowchart TD
 - apps/cli/src/args.ts:132-134 — `--patch`/`--dump-config` 标志定义
 - vendor/include/src/index.ts:44-52（patch 语义说明）,58-128（applyEntryPatches：insert 索引、id 整替、无匹配告警）
 - packages/bundle/base/cordis.patch.yml — 单条 insert 的核心行集；shell 栈按平台门禁
-- packages/bundle/base/README.md:6,20 — base 定位与"整替"局限
+- packages/bundle/base/README.md:5,7,21 — base 定位（:5）、按平台门禁 shell 栈（:7）、"整替"局限（:21）
 - packages/bundle/web-app/cordis.patch.yml、README.md:5 — 覆盖 base、插入浏览器花名册、下沉 agent 平面行
 - packages/bundle/headless/cordis.patch.yml、README.md:5-7 — 无 server 的一次性 runner
 - packages/preset/README.md:5,14 — agent preset 定义与"进程全局服务被拒"约束

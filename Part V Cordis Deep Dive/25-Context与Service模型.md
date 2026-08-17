@@ -50,7 +50,7 @@ flowchart TD
 
 也就是说——**"new 一个 Service 子类"这个动作本身，副作用就是把它挂到 `ctx.<name>` 上**。使用者通常不直接 `new`，而是把这个类当插件 `ctx.plugin(MyService)`，由 fiber 在激活时 new 它（`fiber.ts:150-156`）；服务的生命周期于是与 fiber 的 reload/unload 绑定：fiber 失活时 `provide` 注册的 disposer 会把它从 store 里摘掉（`reflect.ts:195-201`）。`[verified]`
 
-`Service` 基类还带两个协议钩子：`[symbols.filter]`（`service.ts:37-39`）用 isolate 表判断"这个 ctx 是否属于本服务的作用域"，是服务可见性的过滤器；`[symbols.resolveConfig]`（`service.ts:51-67`）沿 intercept 原型链自底向上收集配置并合并——这解释了 `ctx.intercept()` 叠的配置最终怎么汇到服务上。此外 `Service[Symbol.hasInstance]` 被特意重写（`service.ts:69-79`），沿 `prototype.constructor` 链手动比对，注释直言 "constructor may be a proxy"（`service.ts:75`）——因为服务构造出来的是 Proxy，原生 `instanceof` 会失灵。`[verified]`
+`Service` 基类还带两个协议钩子：`[symbols.filter]`（`service.ts:37-39`）用 isolate 表判断"这个 ctx 是否属于本服务的作用域"，是服务可见性的过滤器；`[symbols.resolveConfig]`（`service.ts:51-67`）沿 intercept 原型链自底向上收集配置并合并——这解释了 `ctx.intercept()` 叠的配置最终怎么汇到服务上。此外 `Service[Symbol.hasInstance]` 被特意重写（`service.ts:69-79`），沿 `prototype.constructor` 链手动比对，注释直言 "constructor may be a proxy"（`service.ts:73`）——因为服务构造出来的是 Proxy，原生 `instanceof` 会失灵。`[verified]`
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -156,7 +156,7 @@ sequenceDiagram
 
 回头看这套"symbol 隔离表 + 两层 Proxy"的设计，它比"直接把服务当普通字段存"（`ctx.foo = service`）重得多，为什么值得？第一性的答案是：对一个"改代码不重启、插件随时增删"的内核，**作用域隔离与热插拔是硬需求**——直接存字段既做不到 `isolate` 的"同名不同物"，也无法在服务未就绪时给出精确报错、更没法把取值挂到 fiber 链上随生命周期联动，而这些恰是 symbol 键（隔离表 `context.ts:10、65-69`，symbol 键 `reflect.ts:135、184`）加两层 Proxy（`context.ts:39` 与 `utils.ts:157-212`）换来的能力；Proxy 带来的理解与性能成本（栈里全是代理、`instanceof` 要特判）是为这两项能力付的必要代价。[verified]
 
-放到横向视角，这也解释了 dsh 为何愿意把整个 Cordis vendored 进来：多数 agent harness 面向"一次性任务编排"，用显式传参或模块单例已经够；而 Cordis 这套"Context 即依赖注入容器 + Proxy 稳定 key"服务的是"长期运行、插件生态、热重载"的场景，DI 容器是刚需——两者目标不同、无所谓孰优，dsh 选择 Cordis 正说明它要的是后一种能力。[inferred]
+放到横向视角，这也解释了 dsh 为何愿意把整个 Cordis vendored 进来：多数 agent harness 面向"一次性任务编排"，用显式传参或模块单例已经够；而 Cordis 这套"Context 即依赖注入容器 + Proxy 稳定 key"服务的是"长期运行、插件生态、热重载"的场景，DI（dependency injection，依赖注入——由容器按名字把依赖"送上门"，而不是使用方自己去 new）容器是刚需——两者目标不同、无所谓孰优，dsh 选择 Cordis 正说明它要的是后一种能力。[inferred]
 
 ---
 
@@ -164,9 +164,9 @@ sequenceDiagram
 
 - **`ctx.foo` 报错两态别混**：`without inject`（`reflect.ts:71`）= 你压根没声明依赖；`inactive context`（`reflect.ts:86-89`）= 声明了但服务当前不可用。前者改代码加 inject，后者是时序/依赖未就绪问题。
 - **`instanceof Service` 不可靠**：服务实例是 Proxy，靠重写的 `Symbol.hasInstance`（`service.ts:69-79`）兜底；自定义类若破坏 constructor 链会失效。`[verified]`
-- **reflect 是内部实现，未导出**（`index.ts` 无 reflect 行）——不应把 `ReflectService` 当公开 API 直接依赖，只用 `ctx.reflect` 暴露的那几个方法（`get/set/provide/accessor/mixin`，经 mixin 挂到 ctx，`reflect.ts:144`）。`[verified]`
+- **reflect 是内部实现，未导出**（`index.ts` 无 reflect 行）——不应把 `ReflectService` 当公开 API（Application Programming Interface，应用编程接口，即一个模块对外公开、承诺稳定的调用入口）直接依赖，只用 `ctx.reflect` 暴露的那几个方法（`get/set/provide/accessor/mixin`，经 mixin 挂到 ctx，`reflect.ts:144`）。`[verified]`
 - **同名服务在同作用域重复 provide 会抛**：`service "x" has been registered`（`reflect.ts:187-189`）；跨 isolate 作用域才允许同名。
-- **局限**：整套依赖 ES Proxy 与大量 `Symbol.for` 全局符号（`utils.ts:47-71`），调试时栈帧和对象检查都被代理层遮挡；这是 Cordis 用表达力换来的可读性成本，`4.0.0-rc` 阶段 API 也仍在动（见 Ch24）。`[inferred]`
+- **局限**：整套依赖 ES Proxy 与大量 `Symbol.for` 全局符号（`utils.ts:47-71`），调试时栈帧和对象检查都被代理层遮挡；这是 Cordis 用表达力换来的可读性成本，`4.0.0-rc`（rc = release candidate，候选发布版，尚未正式发版）阶段 API 也仍在动（见 Ch24）。`[inferred]`
 
 ---
 

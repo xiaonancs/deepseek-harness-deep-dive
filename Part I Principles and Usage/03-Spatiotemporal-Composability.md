@@ -1,6 +1,6 @@
 # 第 03 章 · Spatiotemporal Composability
 
-> 本章讲一件事：dsh「一切皆插件」的可替换性，凭什么是可靠的，而不是脆弱的。答案落在它的底座 Cordis 上——一套被形式化为「Spatiotemporal Composability」的范式：**时间维**保证组件卸载时副作用能完全回滚（可逆 effect），**空间维**让组件间依赖以响应式方式声明（响应式 coeffect）。读完本章，你能回答：dsh 里的 `ctx.effect()` / disposer / waterfall / epoch 分别对应范式的哪一半，以及 HMR 与卸载回滚在一个 agent harness 里到底意味着什么。
+> 本章讲一件事：dsh「一切皆插件」的可替换性，凭什么是可靠的，而不是脆弱的。答案落在它的底座 Cordis 上——一套被形式化为「Spatiotemporal Composability」的范式：**时间维**保证组件卸载时副作用能完全回滚（可逆 effect），**空间维**让组件间依赖以响应式方式声明（响应式 coeffect）。读完本章，你能回答：dsh 里的 `ctx.effect()` / disposer / waterfall / epoch 分别对应范式的哪一半，以及 HMR（Hot Module Replacement，热模块替换，俗称热重载：不重启进程就把运行中的模块换成新版本）与卸载回滚在一个 agent harness 里到底意味着什么。
 >
 > 证据纪律：dsh 源码可证的机制标 `[verified]`（给 `文件:行号`）；论文范式的内部论断与 Koishi 血缘属**外部一手/二手**，标 `[claimed]`/`[inferred]`，措辞从严。
 
@@ -10,7 +10,7 @@
 
 dsh 的 README 第一段就把底座和它的理论出处摆在明面：项目「powered by Cordis」，而 Cordis 的设计「described in *A Programming Paradigm for Spatiotemporal Composability*」`[verified]`（README.md:7 直接给出论文链接 `cordiverse/paper`）。这不是营销辞令——它是理解整份代码库的钥匙。
 
-值得先点明一件事：这篇论文并非无关第三方之作，而是**北大 × DeepSeek-AI 的联合论文**——PDF 标题页署名 Yifan Shi（北大/DeepSeek）、Wei Zhang（北大）、Tianyi Cui（DeepSeek），而 **Tianyi Cui 正是 dsh 的头号提交者** `[verified]`（论文标题页；git shortlog）。换句话说，写这套框架论文的人，也在写这个 harness。论文的完整精读见《[Part IV · Spatiotemporal Composability论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)》，论文范式↔dsh 源码的逐条映射见《[Part IV · 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)》；本章聚焦"范式如何落到 dsh 源码"。
+值得先点明一件事：这篇论文并非无关第三方之作，而是**北大 × DeepSeek-AI 的联合论文**——PDF（Portable Document Format，便携文档格式）标题页署名 Yifan Shi（北大/DeepSeek）、Wei Zhang（北大）、Tianyi Cui（DeepSeek），而 **Tianyi Cui 正是 dsh 的头号提交者** `[verified]`（论文标题页；git shortlog 显示其提交约 5235 次、居首）。换句话说，写这套框架论文的人，也在写这个 harness。论文的完整精读见《[Part IV · Spatiotemporal Composability论文全解](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md)》，论文范式↔dsh 源码的逐条映射见《[Part IV · 论文与 dsh 映射](../Part%20IV%20Foundational%20Paper/23-论文与dsh映射.md)》；本章聚焦"范式如何落到 dsh 源码"。
 
 **Spatiotemporal Composability**这一范式的核心主张，可以用两句话概括（论文内部论断，`[claimed]`，据公开摘要）：
 
@@ -70,14 +70,14 @@ flowchart TD
 
 ### 4.1 时间维：effect 与反序卸载 `[verified]`
 
-Cordis 里每个加载的插件实例拥有一个 **fiber**——可以把它理解为「这个插件实例的管家」，专门记账、看护它的生命周期。fiber 维护一张 `_disposables` 列表（就是那叠「拆卸凭条」）；`ctx.effect(execute)` 立即运行 `execute`，把它返回的 disposer 收集进列表，并返回一个「拆除该 effect 并 settle」的 disposer（fiber.ts:403-418 的 JSDoc 明确写：「disposers … run (in reverse order) either when the returned disposer is called or when the fiber unloads, whichever comes first」）`[verified]`。
+Cordis 里每个加载的插件实例拥有一个 **fiber**——可以把它理解为「这个插件实例的管家」，专门记账、看护它的生命周期。fiber 维护一张 `_disposables` 列表（就是那叠「拆卸凭条」）；`ctx.effect(execute)` 立即运行 `execute`，把它返回的 disposer 收集进列表，并返回一个「拆除该 effect 并 settle」的 disposer（fiber.ts:403-418 的 JSDoc〈JavaScript 源码里以 `/** */` 写在函数上方的文档注释〉明确写：「disposers … run (in reverse order) either when the returned disposer is called or when the fiber unloads, whichever comes first」）`[verified]`。
 
 这里的**反序**（reverse order）不是随口一提：拆除总是「后装的先拆」，就像叠盘子时最后放上去的最先拿下来。因为后登记的动作往往建立在先登记的之上，倒着拆才不会踩到还没拆的依赖。
 
 卸载路径 `_unload()` 是可逆性的核心（fiber.ts:675-687）：
 
 ```
-this._disposables.clear().map(dispose => runDisposable(dispose))  // 反序、逐个执行
+this._disposables.clear().map(dispose => runDisposable(dispose))  // 按反序解开（异步 disposer 实为并发，见下文）
 ```
 
 一个关键的顺序契约：disposer **按注册的反序**开始，但多个**异步** disposer 是**并发**运行的——若拆除步骤必须严格串行，就得把它们放进**同一个** effect 里 await（docs/cordis-tutorial/02-lifecycle-and-effects.md:94 明确教了这条陷阱）`[verified]`。
@@ -152,7 +152,7 @@ sequenceDiagram
 
 ### 4.4 HMR 与卸载回滚在 harness 里的实际意义 `[verified]`
 
-时间/空间两轴叠加，才让 **HMR（热模块替换，Hot Module Replacement——不重启进程就把某个运行中的模块换成新版本）** 成为可能：卸载释放全部 effect（时间维），加载依赖驱动（空间维），于是「替换一个运行中的插件 = 卸旧 + 装新」。这有点像给一辆正在行驶的车换轮胎却不用熄火停车——听着悬，但前提正是「旧轮胎能干净利落地卸下」。dsh 没把 HMR 当玩具——`@deepseek-ai/cordis-plugin-hmr` 被写进了**每个 profile 的共享底座** base bundle（packages/bundle/base/cordis.patch.yml:19-22，`root: ['.']`）`[verified]`。app-boot 进一步用 HMR 服务**监听用户 profile 补丁层**，改动即事务化重新应用到 boot include（packages/boot/app-boot/src/index.ts:226-241）`[verified]`。
+时间/空间两轴叠加，才让 **HMR（热重载，见本章开头定义——不重启进程就把某个运行中的模块换成新版本）** 成为可能：卸载释放全部 effect（时间维），加载依赖驱动（空间维），于是「替换一个运行中的插件 = 卸旧 + 装新」。这有点像给一辆正在行驶的车换轮胎却不用熄火停车——听着悬，但前提正是「旧轮胎能干净利落地卸下」。dsh 没把 HMR 当玩具——`@deepseek-ai/cordis-plugin-hmr` 被写进了**每个 profile 的共享底座** base bundle（packages/bundle/base/cordis.patch.yml:19-22，`root: ['.']`）`[verified]`。app-boot 进一步用 HMR 服务**监听用户 profile 补丁层**，改动即事务化重新应用到 boot include（packages/boot/app-boot/src/index.ts:226-241）`[verified]`。
 
 对一个 agent harness，这意味着：**用户改 `cordis.patch.yml` 或开发者改插件源码，不必重启进程、不必丢失会话，运行时就能重组能力集**。而这只有在「卸载能完全回滚」时才安全——否则每次热重载都在泄漏监听器与句柄。vendor 本地补丁 6/8/9/12 大段修补 fiber 与 loader 的「reentrant disposal / 事务回滚 / 死锁」正是为把这条路径打磨到生产可用 `[verified]`（vendor/README.md 本地修改日志）。
 
@@ -184,7 +184,7 @@ flowchart LR
 
 ## 六、竞品/横向对比
 
-同类 harness（Claude Code / Codex CLI 一类）多用 hooks + MCP + slash-command 做扩展：这是被验证过、跨厂商、心智负担小的成熟扩展面，但 hooks 通常只是「在固定生命周期点插回调」，扩展点由宿主枚举，缺少统一的卸载回滚与依赖响应。dsh 则把扩展统一到一个带可逆 effect 与响应式依赖的 DI 内核上——扩展点即类型化事件、任何能力都能自定义并热插拔、卸载有框架级回滚保证。二者的差异是**结构性**的、而非功能清单的多寡：dsh 的扩展粒度做到了「连 agent loop、模型适配器、会话日志都是可替换插件」，这在 hooks/MCP 模型里没有对应物 `[verified]`（event-taxonomy 笔记、AGENTS.md）。但这只是「区别点」的准确描述，并不主张它在**产品体验**上必然更优——绝大多数用户可能只需 hooks 级扩展，HN 上 rco8786「一方 harness 未必胜第三方」的质疑正指向这点 `[claimed]`（社区口径，详见《全网调研》D 节）。
+同类 harness（Claude Code / Codex CLI 一类）多用 hooks（钩子：在固定生命周期点插入回调）+ MCP（Model Context Protocol，模型上下文协议：让外部工具/数据源以标准方式接入模型的开放协议）+ slash-command（斜杠命令，如 `/help`）做扩展：这是被验证过、跨厂商、心智负担小的成熟扩展面，但 hooks 通常只是「在固定生命周期点插回调」，扩展点由宿主枚举，缺少统一的卸载回滚与依赖响应。dsh 则把扩展统一到一个带可逆 effect 与响应式依赖的 DI（dependency injection，依赖注入：由框架把依赖「喂」给组件，而非组件自己去创建）内核上——扩展点即类型化事件、任何能力都能自定义并热插拔、卸载有框架级回滚保证。二者的差异是**结构性**的、而非功能清单的多寡：dsh 的扩展粒度做到了「连 agent loop、模型适配器、会话日志都是可替换插件」，这在 hooks/MCP 模型里没有对应物 `[verified]`（event-taxonomy 笔记、AGENTS.md）。但这只是「区别点」的准确描述，并不主张它在**产品体验**上必然更优——绝大多数用户可能只需 hooks 级扩展，HN（Hacker News，一个技术圈常用的新闻讨论社区）上 rco8786「一方 harness 未必胜第三方」的质疑正指向这点 `[claimed]`（社区口径，详见《全网调研》D 节）。
 
 关于 Cordis 的血缘：其作者 @shigma 亦是知名聊天机器人框架 **Koishi** 的作者，Cordis 被普遍视为从 Koishi 抽象出的通用内核（共享插件市场/HMR/DI 的架构 DNA）`[inferred]`（未取得逐字一手表述，见《全网调研》B 节）。**一个顶级 AI 实验室把 agent harness 建在源自社区聊天机器人框架的 DI/插件内核上**，是本主题最被低估的事实。
 
@@ -192,13 +192,13 @@ flowchart LR
 
 需要诚实讲清一个边界：**「完全回滚」是对合规代码的保证，而非对任意代码的物理保证**。`ctx.effect()` 只能回滚**通过它注册**的东西——一个插件若直接 `setInterval` 而不包进 effect，卸载时就会漏（tutorial 02 专门演示了「必须包进 effect」，正因默认不追踪）。框架自身的回滚也并非天生无洞：vendor 补丁 6 就列举并修补了「setup 期内启动的卸载」「异步 cleanup 的 owner 可见性」「UNLOADING 期拒绝新 effect」三类 reentrant gap；façade 刻意不暴露 `effect()`，同样说明「任意资源都能被 Cordis 追踪」并不成立 `[verified]`（vendor/README.md 补丁 6/8/9/12；tutorial 02:5-9；tool-cordis README Known Limitations）。
 
-其它已知局限：`SESSION_FORMAT_VERSION` 保持 `0`、无兼容承诺（发布前姿态，AGENTS.md）；vendor 与上游的分叉需靠 sync 流程持续 re-apply 本地补丁，长期维护成本真实存在；HMR 依赖 Node loader internals（经 tsx/ESM），跨 Windows 短名路径等边界曾多次踩坑并被补丁修复（vendor 补丁 9/12）`[verified]`。
+其它已知局限：`SESSION_FORMAT_VERSION` 保持 `0`、无兼容承诺（发布前姿态，AGENTS.md）；vendor 与上游的分叉需靠 sync 流程持续 re-apply 本地补丁，长期维护成本真实存在；HMR 依赖 Node loader internals（经 tsx/ESM，ECMAScript Modules，ECMAScript 模块），跨 Windows 短名路径等边界曾多次踩坑并被补丁修复（vendor 补丁 9/12）`[verified]`。
 
 ## 小结与衔接
 
 Spatiotemporal Composability范式给了 dsh 一个别的 harness 少有的底气：**可逆 effect（时间维）让卸载无残留，响应式 coeffect（空间维）让依赖免排序**，两者叠加使「连内核都是插件」的激进主张在工程上站得住。它不是「热重载插件系统」的花名，而是把回滚与依赖响应做成框架级不变量的一套范式——尽管「完全回滚」在实现里仍有靠补丁与约定兜底的边界。
 
-> **↔ 论文对应**：把上述局部的可逆 effect（时间维）与响应式 coeffect（空间维）抬成系统级不变量，正是论文用**五条元理论定理**给出的Spatiotemporal Composability证明——Preservation（Thm.59）、Temporal（Recovery exactness Thm.61 + Terminal recovery Cor.62）、Spatial（Ordering Thm.63、Resolution coherence Thm.64）、Progress（Thm.66）、Confluence（Thm.73）。五条定理的完整陈述、前提与证明骨架已在 [Part IV §2.3.4](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) 完整给出，此处不再重复展开 `[verified]`。
+> **↔ 论文对应**：把上述局部的可逆 effect（时间维）与响应式 coeffect（空间维）抬成系统级不变量，正是论文用**五条元理论定理**给出的Spatiotemporal Composability证明——Preservation（Thm.59；Thm. = Theorem，定理，Cor. = Corollary，推论，下同）、Temporal（Recovery exactness Thm.61 + Terminal recovery Cor.62）、Spatial（Ordering Thm.63、Resolution coherence Thm.64）、Progress（Thm.66）、Confluence（Thm.73）。五条定理的完整陈述、前提与证明骨架已在 [Part IV §2.3.4](../Part%20IV%20Foundational%20Paper/22-A-Programming-Paradigm-for-Spatiotemporal-Composability.md) 完整给出，此处不再重复展开 `[verified]`。
 
 承上启下：本章解释了「凭什么可替换」；下一章（Ch04 profile/bundle 组装）将展示这套可组合性**如何被组织成用户可选的 profile 与 bundle 补丁层**，即 base bundle 里那句「activation is service-availability driven」在配置面的完整故事。而 waterfall/事件分类学作为扩展点的细节，留待 Ch05；agent loop 作为唯一具体 loop 插件的实现，见 Ch06。
 
@@ -211,7 +211,7 @@ Spatiotemporal Composability范式给了 dsh 一个别的 harness 少有的底�
 - `AGENTS.md:100`（cordis 为 peer dep）、`:102`（Registrations are effects 铁律）、`:106`（waterfall 必调 next）
 - `vendor/README.md` — vendored Cordis `4.0.0-rc.7` 清单；本地修改日志补丁 6/8/9/12（reentrant disposal / 事务回滚 / HMR 路径修补）
 - `vendor/cordis/src/fiber.ts:403-418`（effect 语义 JSDoc）、`:418-442`（effect 反序 dispose 实现）、`:611-639`（`_refresh`/`_setEpoch` epoch 响应式）、`:675-687`（`_unload` 反序解开）、`:420-421`（UNLOADING 拒绝新 effect）
-- `vendor/cordis/src/events.ts:32`（DispatchMode 五模式）、`:77-86`（waterfall/next JSDoc）
+- `vendor/cordis/src/events.ts:32`（`DispatchMode` 联合类型共 5 种：`emit` / `parallel` / `serial` / `bail` / `waterfall`；dsh 的事件分类学只用其中 `emit`/`waterfall`/`parallel`/`serial` 四种，`bail` 未在 harness 里使用，故正文只讲四种）、`:77-86`（waterfall/next JSDoc）
 - `packages/core/tools/src/index.ts:1037-1061`（`register()` 返回 disposer，体为 `layers.effect`）
 - `packages/core/system-prompt/src/index.ts:20-31`（`system-prompt/assemble` 事件声明 + `@mode waterfall` + `complete` section 恢复）、`:532-535`（waterfall dispatch 点）
 - `packages/core/agent/src/model-selection.ts:40`、`packages/jobs/tool-jobs/src/index.ts:233-237`（协作型 waterfall 监听器，委托 `next()`）

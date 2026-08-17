@@ -42,7 +42,7 @@ flowchart TD
 Loader 把树拆成三个协作的类：
 
 - **`Entry`**（`config/entry.ts`）——一行清单。`options` 是数据（`{id, name, config, disabled, inject}`），`fiber` 是它挂出来的活实例。`Entry.update()` 是全章最关键的方法。
-- **`EntryGroup`**（`config/group.ts`）——一组有序的 `Entry`，对应 YAML 里的一段列表。它负责"这一组内部谁增谁删"的 reconciliation（对账：拿新旧两份清单比对，只动差集）。
+- **`EntryGroup`**（`config/group.ts`）——一组有序的 `Entry`，对应 YAML（YAML Ain't Markup Language，一种以缩进表达层级、便于人读写的配置文件格式，`cordis.yml` 就是它）里的一段列表。它负责"这一组内部谁增谁删"的 reconciliation（对账：拿新旧两份清单比对，只动差集）。
 - **`EntryTree`**（`config/tree.ts`）——整棵树的门面：`store`（`id→Entry` 索引）、`root`（根 group）、以及 `create/remove/update/resolve` 等按 `id` 定位并落盘（`write()`）的操作（`tree.ts:76-101`）。`id` 用 `:` 分层，`a:b:c` 表示"a 的子树里 b 的子树里的 c"（`tree.ts:56-67`）。
 
 reconciliation 的核心在 `EntryGroup.update(config)`：把新旧两份 `EntryOptions[]` 各建成 `id→options` 的 map，取并集遍历——新 map 里有的就 `create`（已存在则原地更新），旧 map 里独有的就 `remove`（`group.ts:47-64`）。这就是"对账式"更新：不重挂全树，只结算差异。之所以要这么做、而非"清空整组按新清单从头挂一遍"，根因在于 harness 要支持"运行中调一行配置立即生效、其余会话不受打断"：清空重挂会震荡全树、把有状态插件（如已建立的模型会话）无谓重建，而 map 差集加上后文 `Entry.update` 的 `diff` 短路（`group.ts:47-64`、`entry.ts:100-134`）共同保证"变更代价正比于变更量"。[verified]
@@ -78,20 +78,20 @@ flowchart TD
 
 ## 四、实现细节：include 组合、group 分组、HMR 三集合
 
-**include：把外部文件变成一棵子树。** `Include` 也继承 `EntryTree`（`packages/include/src/index.ts:48`）。它 `Service.init` 时 `read()` 读文件、`applyPatches()` 叠加补丁、再 `root.update(data)` 把清单交给对账逻辑（`include.ts:166-181`）。它认得 `.yml/.yaml/.json`，并注册了一个自定义 YAML tag `!!js`——把 `!!js expr` 解析成 `{__jsExpr}` 占位、求值时再 `evaluate`（`include.ts:8-16`、`config/utils.ts:4-8`）。这就是 dsh 里"`disabled: !!js process.platform === 'win32'`"能按平台开关一行的底层支持。写回文件走"先写 `.tmp` 再 `rename`"的原子替换（`include.ts:201-202`），避免写到一半被读到半截。
+**include：把外部文件变成一棵子树。** `Include` 也继承 `EntryTree`（`packages/include/src/index.ts:48`）。它 `Service.init` 时 `read()` 读文件、`applyPatches()` 叠加补丁、再 `root.update(data)` 把清单交给对账逻辑（`include.ts:166-181`）。它认得 `.yml/.yaml/.json`（JSON，JavaScript Object Notation，一种通用的文本数据格式），并注册了一个自定义 YAML tag `!!js`——把 `!!js expr` 解析成 `{__jsExpr}` 占位、求值时再 `evaluate`（`include.ts:8-16`、`config/utils.ts:4-8`）。这就是 dsh 里"`disabled: !!js process.platform === 'win32'`"能按平台开关一行的底层支持。写回文件走"先写 `.tmp` 再 `rename`"的原子替换（`include.ts:201-202`），避免写到一半被读到半截。
 
 **group：让一行"装下一棵子树"。** `group` 包只是把 loader 的 `Group` 类原样再导出（`packages/group/src/index.ts` 全文仅三行）。`Group` 是个服务：`init` 时 `update(this.config)`、`stop` 时把整组 `remove`（`group.ts:73-88`）。它的意义是让"一组插件"成为清单里的一个可整体启停、可作为 `isolate` 边界的单元——Part I Ch04 里 web bundle 把一批 agent 平面的工具行归到 preset 子树、app-boot 在 `cordis:include` 旁一并注册 `cordis:group` 好让一个组装把 `isolate` realm 同时给到 provider 与 consumer，靠的就是它。
 
 **isolate：给一行配一个"服务命名空间"。** `config/isolate.ts` 挂在 `loader/patch-context` 上，用 `LocalRealm`（后缀 `#id`）与 `GlobalRealm`（后缀 `@label`）为服务符号加后缀，实现"同名服务在不同 realm 里互不串台"，并在 `loader/partial-dispose` 时做 realm 垃圾回收（`isolate.ts:151-168`）。它是"每会话不同能力集却共享一个进程"能成立的关键机制之一。
 
-**HMR：watch → 分类 → 卸旧装新 → 失败回滚。** `packages/hmr/src/index.ts` 是全章最硬核的一段。它 `@Inject('loader')` 与 `@Inject('timer')`，且开头就断言"没有 `--expose-internals` 就没法工作"（`hmr/index.ts:49-85`）——因为它要直接操作 Node ESM 的内部模块缓存 `loadCache`（`packages/loader/src/internal.ts:111-122` 通过内部模块拿到这个 loader，并区分 Node 22 的 v1 与 Node 24 的 v2 两套接口）。
+**HMR：watch → 分类 → 卸旧装新 → 失败回滚。** `packages/hmr/src/index.ts` 是全章最硬核的一段。它 `@Inject('loader')` 与 `@Inject('timer')`，且开头就断言"没有 `--expose-internals` 就没法工作"（`hmr/index.ts:49-85`）——因为它要直接操作 Node ESM（ECMAScript Modules，即 `import`/`export` 那套 JavaScript 原生模块系统）的内部模块缓存 `loadCache`（`packages/loader/src/internal.ts:111-122` 通过内部模块拿到这个 loader，并区分 Node 22 的 v1 与 Node 24 的 v2 两套接口）。
 
-watch 到一次文件变化后，按三条路分流（`hmr/index.ts:127-152`）：① 变的是 **externals**（从进程主入口可达的框架模块）——这类无法热替换，直接 `loader.exit()` 触发整进程重启；② 变的文件在 ESM `loadCache` 里——进 `stashed` 暂存、`debounce` 后走 `partialReload()`；③ 变的是某棵 include 的配置文件——调 `include.refresh()` 只重读配置（`hmr/index.ts:143-149`）。
+watch 到一次文件变化后，按三条路分流（`hmr/index.ts:127-152`）：① 变的是 **externals**（从进程主入口可达的框架模块）——这类无法热替换，直接 `loader.exit()` 触发整进程重启；② 变的文件在 ESM `loadCache` 里——进 `stashed` 暂存、`debounce`（防抖：把短时间内的多次触发合并成一次，避免连续保存时反复重载）后走 `partialReload()`；③ 变的是某棵 include 的配置文件——调 `include.refresh()` 只重读配置（`hmr/index.ts:143-149`）。
 
 `partialReload()` 的事务性体现在四步（`hmr/index.ts:229-378`）：
 
 1. **分类**：`analyzeChanges()` 把所有文件分成 `accepted`（该重载：改动文件及其上游依赖者）与 `declined`（不该重载：externals 及其纯下游）。这是一个在依赖图上传播的定点迭代——一个文件只要有一个"依赖它的人"被 accept，它自己就被 accept（`hmr/index.ts:174-227`）。
-2. **清缓存并备份**：对每个 `accepted` 文件，从 ESM `loadCache` 和 CJS `require.cache` 里删除，但**先把删掉的对象存进 `esmBackup/cjsBackup`**（`hmr/index.ts:290-309`）。备份就是回滚的本钱。
+2. **清缓存并备份**：对每个 `accepted` 文件，从 ESM `loadCache` 和 CJS（CommonJS，Node 早期用 `require`/`module.exports` 的模块系统）`require.cache` 里删除，但**先把删掉的对象存进 `esmBackup/cjsBackup`**（`hmr/index.ts:290-309`）。备份就是回滚的本钱。
 3. **试装新**：`await import` 重新导入每个受影响的插件入口；**任何一个抛错，立即 `rollback()`（把备份写回缓存）并返回**（`hmr/index.ts:320-329`）——此时旧插件尚未卸载，等于什么都没发生。
 4. **换实例**：对每个要重载的插件，先 `registry.delete(旧plugin)` 卸掉旧 fiber，再用新导出 `registry.plugin` 挂新 fiber，并把旧 fiber 的 `entry` 关系接到新 fiber 上（`reload()`，`hmr/index.ts:331-360`）。若这一步中途抛错，进 `catch`：`rollback()` 缓存 + 把已装的新插件删掉 + 用旧 plugin 重新挂回（`hmr/index.ts:361-374`）。全成功才 `emit('hmr/reload')` 并清空 `stashed`。
 
@@ -128,7 +128,7 @@ sequenceDiagram
 
 ## 五、易错点与注意事项
 
-- **HMR 强依赖 `--expose-internals`**：拿不到 Node 内部 `loadCache` 就直接抛错（`hmr/index.ts:80-82`）。这是把手伸进 Node 未公开 API 的代价，也解释了为何它对 Node 主版本敏感（v1/v2 双实现，`internal.ts:84-92`）。
+- **HMR 强依赖 `--expose-internals`**：拿不到 Node 内部 `loadCache` 就直接抛错（`hmr/index.ts:80-82`）。这是把手伸进 Node 未公开 API（Application Programming Interface，应用编程接口；"未公开"指它不在 Node 对外承诺稳定的接口清单里，随版本可能改动）的代价，也解释了为何它对 Node 主版本敏感（v1/v2 双实现按 Node 主版本号分派，`internal.ts:111-122`；v2 接口定义见 `internal.ts:84-92`）。
 - **externals 一律整进程重启**：改到框架自身的代码，HMR 不会尝试热替换，而是 `loader.exit()`（`hmr/index.ts:133`）。热替换只对"叶子插件及其局部依赖"生效。
 - **函数插件与服务插件不能混用默认导出**：这条虽在 dsh 侧约定（`packages/CLAUDE.md`"Plugin exports"），但根因在 loader 的 `unwrapExports`（`index.ts:156-163`）如何解 `default` 互操作——混用会让 Loader 丢掉函数插件的具名导出。
 - **patch 整替、不深合并**：`applyPatches` 里 `target[key] = value` 是逐顶层键覆盖（`include.ts:157-160`），与 Ch04 所述 dsh 分层 patch 的"整替"语义同源。
@@ -145,7 +145,7 @@ sequenceDiagram
 
 ## 八、呼应 Part I Ch04：dsh 如何骑在这层之上
 
-Ch04 讲的 profile/bundle/patch，落到本章就是三个动作的组合。**装配**：dsh 用 `mountRootInclude` 注册 `cordis:include`/`cordis:group` 两个 builtin 并挂载 include（`packages/boot/app-boot/README.md:18`），include 读的那份 YAML 正是 `composeEntries` 把 `[bundlePatches, profile.patches, homePatches, overlays]` 四层经 `applyEntryPatches` 叠出来的（`apps/cli/src/profile-boot.ts:151`）——即本章 include 的 `applyPatches`（`include.ts:101-164`）在 dsh 侧的同源实现。**patch**：dsh 的每一条 patch，最终就是往 include 树里 `insert` 一行或按 `id` 覆盖一行。**热重载**：dsh 在进程 settle 后 `ctx.loader.create({name: 'cordis-plugin-hmr', config: {root: []}})` 挂一个只盯配置的 HMR（`profile-boot.ts:283`），再用 `watchUserPatches` 把用户 patch 文件的变化"事务式"重新叠加回根 include——它重算完整 patch 列表后调 `entry.update({config: {...includeConfig, patches}})`（`packages/boot/app-boot/src/index.ts:241-253`），正好复用本章 `Entry.update → EntryGroup.update` 的逐 id 对账。于是"改一行 `cordis.patch.yml`、长驻界面上立即生效、其余会话不受扰"这条 Ch04 承诺的契约，其可逆性与增量性完全建立在本章的机制上。
+Ch04 讲的 profile/bundle/patch，落到本章就是三个动作的组合。**装配**：dsh 用 `mountRootInclude` 注册 `cordis:include`/`cordis:group` 两个 builtin 并挂载 include（`packages/boot/app-boot/README.md:18`），include 读的那份 YAML 正是 `composeEntries` 把 `[bundlePatches, profile.patches, homePatches, overlays]` 四层经 `applyEntryPatches` 叠出来的（`apps/cli/src/profile-boot.ts:151`）——即本章 include 的 `applyPatches`（`include.ts:101-164`）在 dsh 侧的同源实现。**patch**：dsh 的每一条 patch，最终就是往 include 树里 `insert` 一行或按 `id` 覆盖一行。**热重载**：dsh 在进程 settle（安顿就绪）后 `ctx.loader.create({name: '@deepseek-ai/cordis-plugin-hmr', config: {root: []}})` 挂一个只盯配置的 HMR（`profile-boot.ts:283`），再用 `watchUserPatches` 把用户 patch 文件的变化"事务式"重新叠加回根 include——它重算完整 patch 列表后调 `entry.update({config: {...includeConfig, patches}})`（`packages/boot/app-boot/src/index.ts:241-253`），正好复用本章 `Entry.update → EntryGroup.update` 的逐 id 对账。于是"改一行 `cordis.patch.yml`、长驻界面上立即生效、其余会话不受扰"这条 Ch04 承诺的契约，其可逆性与增量性完全建立在本章的机制上。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 

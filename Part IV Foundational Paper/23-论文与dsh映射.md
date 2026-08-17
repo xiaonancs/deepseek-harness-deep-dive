@@ -12,22 +12,22 @@
 
 **作者与单位**：Yifan Shi¹²、Wei Zhang¹、Tianyi Cui²。其中 ¹ 为 **Peking University（北京大学）**，² 为 **DeepSeek-AI**。这是一篇学术界与工业界合著的论文——理论骨架来自北大，工程验证来自 DeepSeek 一侧的实践者。
 
-**TL;DR（一句话）**：现代软件（从插件系统到 self-evolving agent harness）越来越需要"动态组合"——组件在运行时来了又走——但它的形式基础一直没打牢。论文把编程语言理论里两个经典概念**提升为运行时机制**：把描述"计算如何修改环境"的 **effect** 提升成**可逆的**（revertible），把描述"计算如何依赖环境"的 **coeffect** 提升成**响应式的**（reactive），从而得到一套语言无关、可落地的动态组合范式，并在名为 **Cordis** 的元框架里实现、在拥有 4000+ 社区插件的 **Koishi** 平台上验证。
+**TL;DR（Too Long; Didn't Read，直译"太长不看"，即一句话摘要）**：现代软件（从插件系统到 self-evolving agent harness）越来越需要"动态组合"——组件在运行时来了又走——但它的形式基础一直没打牢。论文把编程语言理论里两个经典概念**提升为运行时机制**：把描述"计算如何修改环境"的 **effect** 提升成**可逆的**（revertible），把描述"计算如何依赖环境"的 **coeffect** 提升成**响应式的**（reactive），从而得到一套语言无关、可落地的动态组合范式，并在名为 **Cordis** 的元框架里实现、在拥有 4000+ 社区插件的 **Koishi** 平台上验证。
 
 **为什么值得读**：它给"热插拔为什么难"提供了一套精确的词汇。以前我们只能含糊地说"卸载没收干净""依赖没管好"；这篇论文把前者定义为 **temporal composability**（时间维：卸载时能否完全回滚副作用），把后者定义为 **spatial composability**（空间维：能否声明式地、响应式地管理组件间依赖）。两个维度正交，各自对应 effect 与 coeffect。
 
 **开篇动机（§1）**：论文用 VSCode 插件生态做实证切入。
 
 - **时间维的局限**：扩展一旦加载，其可执行代码无法在运行时卸载——作者统计 top100 扩展中有 **87 个**包含可执行代码、需要重启才能真正卸下。
-- **空间维的局限**：扩展间依赖几乎无法表达——top100 中仅 **7 个**声明了 `extensionDependencies`，而拿到别的扩展导出的 API（`getExports`）时**没有类型**。
+- **空间维的局限**：扩展间依赖几乎无法表达——top100 中仅 **7 个**声明了 `extensionDependencies`，而拿到别的扩展导出的 API（Application Programming Interface，应用程序编程接口；这里即 `getExports` 拿到的那批导出函数）时**没有类型**。
 - 现实里大家的"粗粒度绕过"（coarse-grained workaround）就是重启进程 / 容器：一个模块行为异常就重启整个进程，一个服务依赖就交给编排器管。代价很大——重启会丢掉进程内所有累积状态（缓存、连接、部分计算），重建要数秒到数分钟；为了维持可用性还得堆冗余副本。论文点名 **self-evolving agent harness**（会自我改写、替换自身组件的智能体运行时）是这一需求最尖锐的新场景。
 
-**四条贡献（§1.3，与 PDF 第 6 页逐条核对一致）**：
+**四条贡献（§1.3，与 PDF（Portable Document Format，可移植文档格式，这里指论文原文的 PDF 文件）第 6 页逐条核对一致）**：
 
 1. **形式化 revertible effects（§3.1）**：每个 context 变换都配一个显式的逆函数，使得 effect tracking 与 recovery 成为**保持组合运算**的操作，从而保证组件移除时**完全的状态恢复**。这是动态时间可组合性的代数基础。
 2. **形式化 reactive coeffects（§3.2）**：组件把自己的需求声明为一个 typed dependency set，一套基于"满足性"的通知机制自动把状态变迁分类为 **activating / deactivating / neutral**（激活 / 去激活 / 中性）。这是动态空间可组合性的代数基础。
 3. **建立 component lifecycle 模型（§3.3）**并把 effect context 与 coeffect context 整合为**统一的 context type（§3.4）**，构成一套可动态组合的编程范式。
-4. **在 Cordis 中实现（§4）**：一个"Spatiotemporal Composability元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement / 热模块替换）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
+4. **在 Cordis 中实现（§4）**：一个"Spatiotemporal Composability元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement，热模块替换，简称 HMR，指程序运行中直接换掉某个模块而不整体重启）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
 
 ---
 
@@ -178,7 +178,7 @@ stateDiagram-v2
 论文明确把自己和两类主流做法做了对比：
 
 - **vs 函数式 State monad**：monad 需要显式地把状态"穿线"（threading）过每一步，人体工学差；可逆 effect 把逆藏在 context 里，调用方无感。
-- **vs 命令式 / OOP 的隐式变更**：React 的 `useEffect` 靠"调用顺序"隐式建立依赖与清理，脆弱；Spring 的 `getBean` 靠运行时反射拿依赖，无类型、无生命周期协调。可逆 effect + 响应式 coeffect 把这些都显式化、可追踪化。
+- **vs 命令式 / OOP（Object-Oriented Programming，面向对象编程）的隐式变更**：React 的 `useEffect` 靠"调用顺序"隐式建立依赖与清理，脆弱；Spring 的 `getBean` 靠运行时反射拿依赖，无类型、无生命周期协调。可逆 effect + 响应式 coeffect 把这些都显式化、可追踪化。
 
 ### 2.6 实现与案例（§4）、讨论（§5）要点
 
@@ -187,8 +187,8 @@ stateDiagram-v2
 **Discussion（§5）**几个值得记住的点：
 
 - **§5.1 service multiplexing**：从 exclusive binding（独占绑定）走向 service broker（服务代理），后者能支撑负载均衡、滚动更新、跨进程调用。
-- **§5.2 access control**：`inject` 是"能力请求"，context proxy 是"能力中介"，因而**静态可审批**；interception 做细粒度策略（如 fs 元数据）。但论文态度很诚实：**沙箱化不可信组件，需要语言之外的执行边界**（SFI、隔离运行时、沙箱进程、虚拟容器），经由 bridge 接入。
-- **§5.3 语言无关性**：时间维需要 closures + 运行时可引入 / 撤回模块（managed 语言用模块注册表、native 用 `dlopen`/`dlclose`、wasm 看 embedder）；空间维需要依赖注入（类型层用 typeclass / trait / TS module augmentation，运行时用 Proxy / `__get__` / 反射）。
+- **§5.2 access control**：`inject` 是"能力请求"，context proxy 是"能力中介"，因而**静态可审批**；interception 做细粒度策略（如 fs（file system，文件系统）元数据）。但论文态度很诚实：**沙箱化不可信组件，需要语言之外的执行边界**（SFI（Software Fault Isolation，软件故障隔离，一种在同一进程内用指令级检查把不可信代码"关"起来的技术）、隔离运行时、沙箱进程、虚拟容器），经由 bridge 接入。
+- **§5.3 语言无关性**：时间维需要 closures + 运行时可引入 / 撤回模块（managed 语言用模块注册表、native 用 `dlopen`/`dlclose`、wasm（WebAssembly，一种可在多种宿主里运行的可移植字节码格式）看 embedder）；空间维需要依赖注入（类型层用 typeclass / trait / TS（TypeScript，带静态类型的 JavaScript）module augmentation，运行时用 Proxy / `__get__` / 反射）。
 - **§5.4 相互依赖**：出现环 → 静态可预测的"永久 INACTIVE"，而**非死锁**；可分解为单向绑定，代价是组件数增多，用 bundling / 约定接线 / 脚手架缓解。
 - **§5.5 依赖类型与版本**：key 靠名义链接会有 interface drift、key collision；三条出路——key namespacing / peer dependencies（Cordis 现用）/ structural compatibility。
 
@@ -224,11 +224,11 @@ stateDiagram-v2
 ### 3.5 统一 context 与 service multiplexing
 
 - **统一 $\Gamma_\infty$** ↔ Cordis 的 `ctx` / dsh 的 fiber：一个自相似类型承载状态、逆与依赖。
-- **service multiplexing（§5.1）** ↔ dsh 的多个"注册表 / 提供者"场景：LLM 适配器注册表（Ch10）、subagent providers（Ch15）、SDK-ACP 桥接（Ch17）。这些正是"从独占绑定走向服务代理"的工程化身。
+- **service multiplexing（§5.1）** ↔ dsh 的多个"注册表 / 提供者"场景：LLM（Large Language Model，大语言模型）适配器注册表（Ch10）、subagent providers（Ch15）、SDK（Software Development Kit，软件开发工具包）与 ACP（Agent Client Protocol，智能体客户端协议，一套让外部编辑器等程序驱动 harness 会话的接口）之间的桥接（Ch17）。这些正是"从独占绑定走向服务代理"的工程化身。
 
 ### 3.6 一个诚实立场的共振：沙箱需要语言之外的边界
 
-论文 §5.2 明说：**要真正隔离不可信组件，光靠语言机制不够，必须有语言之外的执行边界**。dsh 采取了完全一致的立场——"steering not containment"（引导而非围栏），真正需要强隔离时接入 E2B 等外部沙箱（Ch13）。两者在这一点上是同一种工程诚实：可逆 effect 管得住"善意组件的副作用回滚"，管不住"恶意组件的越权"，后者交给进程 / 容器边界。
+论文 §5.2 明说：**要真正隔离不可信组件，光靠语言机制不够，必须有语言之外的执行边界**。dsh 采取了完全一致的立场——"steering not containment"（引导而非围栏），真正需要强隔离时接入 E2B（一个把代码放进云端隔离沙箱里执行的外部服务）等外部沙箱（Ch13）。两者在这一点上是同一种工程诚实：可逆 effect 管得住"善意组件的副作用回滚"，管不住"恶意组件的越权"，后者交给进程 / 容器边界。
 
 ### 3.7 作者链与"工程验证体"推断
 
@@ -247,12 +247,12 @@ stateDiagram-v2
 - **vs Effekt**（effects as capabilities）：Effekt 把 effect 当能力，但它是**静态、解释式**的；本文是运行时、可逆的。
 - **vs Heunen 的可逆 effect**：Heunen 走 denotational（指称语义）、**全局可逆**；本文是运行时、局部可组合的可逆。
 - **vs Orchard 的 graded types**：graded coeffect 也刻画依赖，但**静态**；本文是响应式、运行时的。
-- **vs COP（Context-Oriented Programming）**：COP 把 context 当一等公民，但它**不追踪也不回滚 activation**；本文两者都做。
-- **vs AOP（面向切面编程）**：AOP 的 pointcut 是 "oblivious & quantified"（组件对被切浑然不觉、且靠模式量化匹配）；Cordis 的 coeffect 是 "declared & traceable"（显式声明、可追踪），且切面**绑定组件生命周期**。
-- **vs DSU / Erlang 热更 / HMR**：这些走 **forward migration**（向前迁移状态）；Cordis 走**回滚重放**（revert-and-replay）。
+- **vs COP（Context-Oriented Programming，面向上下文编程）**：COP 把 context 当一等公民，但它**不追踪也不回滚 activation**；本文两者都做。
+- **vs AOP（Aspect-Oriented Programming，面向切面编程）**：AOP 的 pointcut 是 "oblivious & quantified"（组件对被切浑然不觉、且靠模式量化匹配）；Cordis 的 coeffect 是 "declared & traceable"（显式声明、可追踪），且切面**绑定组件生命周期**。
+- **vs DSU（Dynamic Software Update，动态软件更新，指程序不停机就替换其运行中的代码）/ Erlang 热更 / HMR**：这些走 **forward migration**（向前迁移状态）；Cordis 走**回滚重放**（revert-and-replay）。
 - **vs React useEffect**：受限于 top-level 调用、且**逆不能组合**；本文的逆可组合。
 - **vs OSGi / iPOJO**：它们也做 availability-reactive（按可用性响应），但 cleanup 要**手写**、且**同步**；本文自动且可异步。
-- **vs FRP / signals**：FRP 在 **value 层**（值随时间变化）；本文在 **component 层**（组件随依赖满足性激活 / 卸载）。
+- **vs FRP（Functional Reactive Programming，函数式响应式编程）/ signals**：FRP 在 **value 层**（值随时间变化）；本文在 **component 层**（组件随依赖满足性激活 / 卸载）。
 
 一句话总结坐标：**别人要么静态、要么只在值层、要么向前迁移不回滚、要么清理靠手写；这篇把"运行时 + 组件层 + 可逆回滚 + 自动响应"四个特性同时占齐了。**
 

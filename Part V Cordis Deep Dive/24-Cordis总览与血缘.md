@@ -6,14 +6,14 @@
 
 ## 一、Cordis 是什么
 
-Cordis 的自我定义写在 README 第一行：**"A Meta-Framework of Spatiotemporal Composability"**（一个Spatiotemporal Composability的元框架）`[verified]`（`repo/cordis/README.md:5`）。而 `packages/core` 的包描述用了更朴素的说法——"Meta-Framework for Modern Applications"`[verified]`（`repo/cordis/packages/core/package.json:3`）。
+Cordis 的自我定义写在 README 第一行：**"A Meta-Framework of Spatiotemporal Composability"**（可直译为"一个具备时空可组合性的元框架"——"时空"二字的含义本章第一节末尾会拆开讲）`[verified]`（`repo/cordis/README.md:5`）。而 `packages/core` 的包描述用了更朴素的说法——"Meta-Framework for Modern Applications"`[verified]`（`repo/cordis/packages/core/package.json:3`）。
 
 "元框架（meta-framework）"这个词值得拆开讲：它自己不直接实现业务功能，而是提供一套"如何把功能拼装起来"的规则。打个比方，它不是灯泡，而是**插座标准**——规定了灯泡怎么插、怎么拔、拔了以后电路怎么恢复，至于插进来的是台灯还是电扇，它不关心。这套"插拔标准"在 Cordis 里由几个核心概念承担，读源码会反复撞见它们：
 
 - **Context**：一切能力的入口对象。插件拿到的是一个 `Context` 实例，对它读写就等于访问整个应用的能力集（`repo/cordis/packages/core/src/context.ts:9-78`，`[verified]`）。
 - **Service**：挂在 Context 上的"具名能力"。内核自带 `events`、`logger`、`reflect`、`registry` 四个内建 service，构造函数里逐个装配（`context.ts:15-18`、`context.ts:43-46`，`[verified]`）。
 - **Plugin / Fiber**：插件是被加载的功能单元；`Fiber`（纤程）是插件运行时的**生命周期载体**，管着它的启动、失败、卸载（`repo/cordis/packages/core/src/fiber.ts`，`[verified]`）。
-- **effect / disposer**：插件运行时产生的"副作用"（注册监听、占用资源）都通过 `ctx.effect(...)` 登记，返回一个可回收的 disposer；卸载时统一回滚。`Context.effect` 是一个 `unique symbol`（`context.ts:22`，`[verified]`），fiber 里 `effect` 的实现集中在 `fiber.ts:225-242` 一带（`[verified]`）。
+- **effect / disposer**：插件运行时产生的"副作用"（注册监听、占用资源）都通过 `ctx.effect(...)` 登记，返回一个可回收的 disposer；卸载时统一回滚。`Context.effect` 是一个 `unique symbol`（`context.ts:22`，`[verified]`），fiber 里 `effect` 方法的实现集中在 `fiber.ts:277-340`（核心执行器 `_execute` 见 `fiber.ts:229-273`，`[verified]`）。
 - **loader / HMR**：把"从配置文件加载插件""热替换（Hot Module Replacement，改代码不重启）"这类能力，做成了独立的插件包 `@cordisjs/plugin-loader`、`@cordisjs/plugin-hmr`（`[verified]`，见下文包清单）。
 
 这些名词现在只需混个脸熟。要记住的一句话是：**Cordis 用一套"可组合、可回收"的插件模型，把一个应用拆成许多能独立装卸的单元**，而"Spatiotemporal Composability"里的"时"，指的正是插件在时间维度上的动态装卸（对应 fiber 的生命周期），"空"则是 Context 在作用域维度上的隔离与派生。
@@ -70,7 +70,7 @@ flowchart LR
 
 ## 三、九个包与内核九模块
 
-打开 `package.json` 会看到工作区（workspaces）指向 `external/*` 与 `packages/*``[verified]`（`repo/cordis/package.json:7-10`），其中 `external/` 目前为空，实体代码都在 `packages/` 下的 **9 个包**里（`ls packages/` 可复现，`[verified]`）：
+打开 `package.json` 会看到工作区（workspaces）指向 `external/*` 与 `packages/*``[verified]`（`repo/cordis/package.json:7-10`），其中 `external/` 目前为空，实体代码都在 `packages/` 下的 **9 个包**里（`ls packages/` 可复现，`[verified]`）。下表「npm 名」一列，即各包发布到 npm（Node Package Manager，Node 的包管理器与公共包仓库）时使用的名字：
 
 | 包名 | npm 名 | 版本 | 职责 |
 | --- | --- | --- | --- |
@@ -84,7 +84,7 @@ flowchart LR
 | logger-console | `@cordisjs/plugin-logger-console` | 1.0.0 | 控制台日志导出 |
 | create | `create-cordis` | 0.3.0 | 脚手架（创建应用） |
 
-（以上版本号均取自各包 `package.json`，`[verified]`。）一个值得注意的信号：**内核 `cordis` 已到 `4.0.0-rc.8`，而周边插件多在 `1.x`**——内核经历了多个大版本迭代，插件生态相对年轻。
+（以上版本号均取自各包 `package.json`，`[verified]`。）一个值得注意的信号：**内核 `cordis` 已到 `4.0.0-rc.8`（rc = release candidate，候选发布版，即尚未正式发版的预备版本），而周边插件多在 `1.x`**——内核经历了多个大版本迭代，插件生态相对年轻。
 
 内核本体 `packages/core/src/` 下是 **9 个模块**（`wc -l packages/core/src/*.ts` 可复现，共约 1848 行，`[verified]`）：
 
@@ -98,7 +98,7 @@ flowchart LR
 - `utils.ts`（278 行）——symbols、DisposableList 等公共设施。
 - `index.ts`（7 行）——总出口。
 
-一个容易被忽略的细节：`index.ts` 只 `export` 了 7 个模块——context、events、fiber、logger、registry、service、utils——**唯独没有导出 `reflect`**`[verified]`（`repo/cordis/packages/core/src/index.ts:1-7`）。这暗示 `reflect` 更像内核的"内部机制"而非对外 API，外部插件不应直接依赖它。
+一个容易被忽略的细节：`index.ts` 只 `export` 了 7 个模块——context、events、fiber、logger、registry、service、utils——**唯独没有导出 `reflect`**`[verified]`（`repo/cordis/packages/core/src/index.ts:1-7`）。这暗示 `reflect` 更像内核的"内部机制"而非对外 API（Application Programming Interface，应用编程接口，即一个模块公开给外部调用的入口集合），外部插件不应直接依赖它。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -141,7 +141,7 @@ Cordis 已有相当长的开发史。`git rev-list --count HEAD` 给出 **550 �
 
 作者结构高度集中：`git shortlog -sn` 显示 **Shigma 一人 537/550**，Hieuzest 7 次，另有 undefined 3、Cyan 2、imccyu 1`[verified]`。这是一个典型的**单一核心作者主导**的项目。仓库规模不大——112 个受版本控制的文件、其中 58 个 `.ts`（`git ls-files | wc -l`、`git ls-files '*.ts' | wc -l`，`[verified]`）。
 
-成熟度上有两个必须直说的信号。其一，README 明写 **"Cordis is under active development. The API is not yet stable and may change without notice."**（仍在活跃开发，API 尚不稳定，可能无预告变更）`[verified]`（`repo/cordis/README.md:7`）。其二，内核版本停在 `4.0.0-rc.8`（rc = release candidate，发布候选，尚未正式 4.0）`[verified]`。近期提交也印证了这一点——2026 年 8 月的提交多是 `fix(core)`/`perf(core)` 级别的核心修补，例如 "keep wrapped fiber state canonical (#40)"、"track direct service callers (#35)"（`git log -8`，`[verified]`）。
+成熟度上有两个必须直说的信号。其一，README 明写 **"Cordis is under active development. The API is not yet stable and may change without notice."**（仍在活跃开发，API 尚不稳定，可能无预告变更）`[verified]`（`repo/cordis/README.md:7`）。其二，内核版本停在 `4.0.0-rc.8`（rc 即前述候选发布版，尚未正式 4.0）`[verified]`。近期提交也印证了这一点——2026 年 8 月的提交多是 `fix(core)`/`perf(core)` 级别的核心修补，例如 "keep wrapped fiber state canonical (#40)"、"track direct service callers (#35)"（`git log -8`，`[verified]`）。
 
 ## 五、与 DeepSeek Harness 的关系锚点
 
@@ -171,7 +171,7 @@ sequenceDiagram
 
 ## 小结与衔接
 
-一句话概括本章：**Cordis 是 @shigma 与 Koishi 同源、以约 1900 行核心撑起的 TS 微内核插件框架**——用 Context/Service/Plugin/Fiber/effect/loader/HMR 一套抽象规定"能力如何装拆"，四年 550 提交、单人主导，目前处于 `4.0.0-rc` 的"机制成型、API 未定"阶段，并被 dsh vendored 为运行时内核。本章只认门牌、点关系；从下一章起，Part V 会逐个拆开这台内核：Context 的派生与隔离、Fiber 的六态生命周期（PENDING/LOADING/ACTIVE/FAILED/DISPOSED/UNLOADING，见 `fiber.ts:78-85`）、Service 的依赖注入、以及 loader/HMR 如何把"改代码不重启"变成现实。而它与 dsh 的接线细节，则由 Ch29 与 Part III Ch21 收尾。
+一句话概括本章：**Cordis 是 @shigma 与 Koishi 同源、以约 1900 行核心撑起的 TS（TypeScript，带静态类型的 JavaScript）微内核插件框架**——用 Context/Service/Plugin/Fiber/effect/loader/HMR 一套抽象规定"能力如何装拆"，四年 550 提交、单人主导，目前处于 `4.0.0-rc` 的"机制成型、API 未定"阶段，并被 dsh vendored 为运行时内核。本章只认门牌、点关系；从下一章起，Part V 会逐个拆开这台内核：Context 的派生与隔离、Fiber 的六态生命周期（PENDING/LOADING/ACTIVE/FAILED/DISPOSED/UNLOADING，见 `fiber.ts:78-85`）、Service 的依赖注入、以及 loader/HMR 如何把"改代码不重启"变成现实。而它与 dsh 的接线细节，则由 Ch29 与 Part III Ch21 收尾。
 
 ## 源码索引
 
@@ -187,7 +187,7 @@ sequenceDiagram
 - `repo/cordis/packages/core/src/context.ts:22` —— `Context.effect` unique symbol
 - `repo/cordis/packages/core/src/context.ts:43-46` —— 内建 service 装配
 - `repo/cordis/packages/core/src/fiber.ts:78-85` —— `FiberState` 六态枚举
-- `repo/cordis/packages/core/src/fiber.ts:225-242` —— effect 实现
+- `repo/cordis/packages/core/src/fiber.ts:277-340` —— `effect` 方法实现（执行器 `_execute` 见 `fiber.ts:229-273`）
 - `repo/cordis/packages/core/src/index.ts:1-7` —— 出口（不含 reflect）
 - 各包 `package.json` —— 9 个包的 npm 名与版本
 - git 命令：`git rev-list --count HEAD`（550）、`git log --reverse`（2022-05-18 起）、`git shortlog -sn`（Shigma 537/550）、`git ls-files | wc -l`（112）、`git ls-files '*.ts' | wc -l`（58）、`git log --all --format="%s %b" | grep -i koishi`（4 条 Koishi issue 引用）

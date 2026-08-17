@@ -49,11 +49,11 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 | 11 | [能力接缝架构](Part%20II%20Source%20Analysis/11-能力接缝架构.md) | Definition/Provider/Consumer 三角色 |
 | 12 | [执行世界 Shell/Subprocess/Terminal](Part%20II%20Source%20Analysis/12-执行世界.md) | 三层执行 + request/spec 显式 resolve |
 | 13 | [沙箱与进程约束](Part%20II%20Source%20Analysis/13-沙箱与进程约束.md) | bwrap/Landlock/Seatbelt、steering 立场 |
-| 14 | [文件系统、LSP 与代码运行时](Part%20II%20Source%20Analysis/14-文件系统-LSP-代码运行时.md) | fs 策略 / LSP / Code Mode |
+| 14 | [文件系统、LSP 与代码运行时](Part%20II%20Source%20Analysis/14-文件系统-LSP-代码运行时.md) | fs 策略 / LSP（Language Server Protocol，语言服务器协议）/ Code Mode |
 | 15 | [编排与委派 Subagent/Workflow/Plan](Part%20II%20Source%20Analysis/15-编排与委派.md) | 委派 / worker 引擎 / plan 状态 |
 | 16 | [上下文治理 压缩/注入/Skill](Part%20II%20Source%20Analysis/16-上下文治理.md) | compaction / context / skill / spill |
-| 17 | [会话持久化、检索与远程接入](Part%20II%20Source%20Analysis/17-持久化检索与远程接入.md) | 持久化/检索/SDK/ACP/API/Web |
-| 18 | [互操作与自我修改](Part%20II%20Source%20Analysis/18-互操作与自我修改.md) | MCP / Hooks / extensions 自指运行时 |
+| 17 | [会话持久化、检索与远程接入](Part%20II%20Source%20Analysis/17-持久化检索与远程接入.md) | 持久化/检索/SDK（Software Development Kit，软件开发工具包）/ACP（Agent Client Protocol，agent 客户端协议）/API（Application Programming Interface，应用程序接口）/Web |
+| 18 | [互操作与自我修改](Part%20II%20Source%20Analysis/18-互操作与自我修改.md) | MCP（Model Context Protocol，模型上下文协议）/ Hooks / extensions 自指运行时 |
 
 ### Part III 对比与元
 
@@ -93,5 +93,5 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 
 ## 免责
 
-- 附录见 [Appendix/](Appendix/)。外部数据（star 数、HN 分数等）随时间变动，正文一律标 `[claimed]`；与源码冲突时以一手源码为准。
+- 附录见 [Appendix/](Appendix/)。外部数据（star 数、HN（Hacker News，技术圈热门英文论坛）分数等）随时间变动，正文一律标 `[claimed]`；与源码冲突时以一手源码为准。
 - 本研究为独立第三方技术分析，非 DeepSeek 官方文档。

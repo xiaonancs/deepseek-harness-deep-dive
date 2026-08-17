@@ -4,7 +4,7 @@
 
 ## 本附录文档
 
-- [论文导读 · 时空可组合性范式](论文导读-时空可组合性范式.md) —— 北大×DeepSeek 论文《A Programming Paradigm for Spatiotemporal Composability》精读，含论文↔dsh 逐条映射与事实核验。
+- 论文研究已升格为正文 **Part IV**（见项目根 `Part IV Foundational Paper/`）：完整论文全解 + 论文↔dsh 映射，不再放附录。
 - [官方文档对照](官方文档对照.md) —— 官方开发者文档站（deepseek-harness.github.io）与本研究源码分析的印证 / 补充 / 修正对照。
 - [生态反推与泄漏复盘](生态反推与泄漏复盘.md) —— 整理社区第三方反推报告（cjh，基于泄漏截图/社区镜像）的生态三叉戟、组织时间线、泄漏复盘、社区插件与遥测实拍，并对其 Cordis「魔改」声称做官方源码交叉核实；证据默认 `[claimed]`。
 

@@ -2,9 +2,15 @@
 
 补充资料。
 
+## 本附录文档
+
+- [论文导读 · 时空可组合性范式](论文导读-时空可组合性范式.md) —— 北大×DeepSeek 论文《A Programming Paradigm for Spatiotemporal Composability》精读，含论文↔dsh 逐条映射与事实核验。
+- [官方文档对照](官方文档对照.md) —— 官方开发者文档站（deepseek-harness.github.io）与本研究源码分析的印证 / 补充 / 修正对照。
+
 ## 上游
 
 - 仓库：https://github.com/deepseek-ai/deepseek-harness （MIT，developer preview）
+- 参考底座 Cordis：https://github.com/cordiverse/cordis ；论文预印本：https://github.com/cordiverse/paper
 
 ## 证据等级约定
 

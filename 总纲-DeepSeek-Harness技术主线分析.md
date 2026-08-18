@@ -20,13 +20,15 @@
 3. **过程命题**：这是一个**主要由 coding agent（编程 AI 智能体，即能自己读写代码、跑命令的 AI 程序）编写**的代码库——不是推断，而是仓库自述（`quality-gates.md:11`："This codebase is developed primarily by coding agents"），2 个月 12,293 commits（commit 即一次代码提交；本文以 rc.5 快照为基线，截至 2026-08-17 的 rc.7 已达 12,404，见 [Appendix/更新追踪](Appendix/更新追踪.md)）佐证。正因为主力"程序员"是 AI，它才格外需要一套能约束 AI、也能让 AI 之间协作的规矩，于是制度化了一整套面向 agent 的工程纪律：Agent Notes（约 505 篇已实现决策记录，相当于给后来者留的"当初为什么这么决定"的备忘）、postmortem（事故复盘）、100% 单文件覆盖、双语门禁、原生 stacked-PR（PR 即 Pull Request，拉取请求，一次待评审的代码合并提议；stacked-PR 就是把一串互相依赖的改动拆成层层叠放的小 PR 依次评审、合并）。
 4. **理念命题**：以上三者都能回溯到 DeepSeek 的公司理念——原创而非模仿、少即是多的工程审美、开源作为声誉/人才/标准战略、扁平且好奇心驱动。也就是说，技术上的每一处取舍，背后都能找到一条更上层的价值观在支撑。
 
-## 五个 Part 的组织逻辑
+## 七个 Part 的组织逻辑
 
 - **Part I 理念与使用**（Ch01–04）：先立"为什么这样"——项目定位、一切皆插件、Spatiotemporal Composability 范式，以及 profile/bundle 组装（可以理解为"预设档 + 功能包"：profile 是一套面向某场景的默认配置，bundle 是一组打包在一起的插件，二者拼起来就搭出一个可用的 dsh）。读完能回答"dsh 是什么、凭什么可替换"。
 - **Part II 源码剖析**（Ch05–18）：主体。沿"回合流→会话→提示词→工具→模型→能力接缝→各能力域→远程/互操作/自我修改"这条从里到外的线索逐层深入，每章七维分析 + 承重判断（取舍与根因直接写进正文）+ ≥4 图。
 - **Part III 对比与元**（Ch19–21）：跳出源码，从更高处看它——生态里的位置（竞品对比）、元层面（AI 自举开发方法论 + 公司理念映射），以及对参考底座 Cordis 的深度对比。
 - **Part IV 论文研究**（Ch22–23）：支撑 dsh 的底座论文《A Programming Paradigm for Spatiotemporal Composability》（北大 × DeepSeek-AI）的逐节精读，以及论文范式与 dsh 源码的逐条映射。
 - **Part V Cordis 深度调研**（Ch24–29）：对底座框架 cordiverse/cordis 单独跑一遍源码深度解析，并厘清 Cordis · Koishi · dsh 三者关系。
+- **Part VI 开发规范与贡献工作流**（Ch30–33）：从 `docs/cookbook`、`development`/`testing`、`i18n/` 与 `.agents/skills` 提炼"怎么给 dsh 写代码"——贡献流程与工程门禁、修改配方、代码评审与 stacked-PR、文档与双语规范。
+- **Part VII 设计决策志**（Ch34–35）：把 `.agents/notes` 的 507 篇决策记录与 `docs/postmortem` 提炼成设计决策地图，以及事故复盘与不变量。
 
 ## 推荐阅读路径
 

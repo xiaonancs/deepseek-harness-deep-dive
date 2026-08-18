@@ -11,7 +11,9 @@
 - 🧭 [Part III 对比与元](#part-iii-对比与元)（含 Ch21 参考底座 Cordis 深度对比）
 - 📕 [Part IV 论文研究](#part-iv-论文研究)（Spatiotemporal Composability 论文全解 + 论文↔dsh 映射）
 - 🧬 [Part V Cordis 深度调研](#part-v-cordis-深度调研)（对 cordiverse/cordis 单独跑一遍深度解析 + 三者关系）
-- 📘 [官方文档对照](Appendix/官方文档对照.md) · 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md)
+- 🛠️ [Part VI 开发规范与贡献工作流](#part-vi-开发规范与贡献工作流)（门禁 / 修改配方 / 代码评审 stacked-PR / 文档双语规范）
+- 🗂️ [Part VII 设计决策志](#part-vii-设计决策志)（507 篇 ADR 决策地图 + 事故复盘与不变量）
+- 📘 [官方文档对照](Appendix/官方文档对照.md) · 🗺️ [文档与技能全目录](Appendix/文档与技能全目录.md) · 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md)
 - 📎 [Appendix 附录](Appendix/)
 
 ## 这份研究是什么
@@ -85,9 +87,32 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 | 28 | [Loader 与 HMR](Part%20V%20Cordis%20Deep%20Dive/28-Loader与HMR.md) | 声明式配置树装配 + 事务式热重载 + dsh profile/bundle 呼应 |
 | 29 | [Cordis · Koishi · dsh 关系](Part%20V%20Cordis%20Deep%20Dive/29-Cordis-Koishi-dsh关系.md) | 血缘链 + 作者线 + 边界划分 + 论文—框架—产品三角 |
 
+### Part VI 开发规范与贡献工作流
+
+从 `docs/cookbook`、`development`/`testing`、`i18n/` 与 `.agents/skills` 提炼"怎么给 dsh 写代码、它的工程规矩"。
+
+| 章 | 标题 | 提要 |
+|---|---|---|
+| 30 | [贡献流程与工程门禁](Part%20VI%20Dev%20Conventions/30-贡献流程与工程门禁.md) | 本地起步 / 源码平面 vs 产物平面 / 门禁清单（薄本地·厚 CI） |
+| 31 | [修改配方](Part%20VI%20Dev%20Conventions/31-修改配方.md) | 加工具/包/vendored 包/LLM 适配器/会话节点/extension 的统一心智模型 |
+| 32 | [代码评审与 stacked-PR 工作流](Part%20VI%20Dev%20Conventions/32-代码评审与StackedPR.md) | 评审纪律 + 原生 stacked-PR + 在栈上回应评审 + 配套 skill |
+| 33 | [文档与双语规范](Part%20VI%20Dev%20Conventions/33-文档与双语规范.md) | JSDoc 契约 / prose 标准 / 双语配对门禁 / CoT 泄漏 / rescope |
+
+### Part VII 设计决策志
+
+把 `.agents/notes`（507 篇 ADR）与 `docs/postmortem` 提炼成决策与事故的主题地图。
+
+| 章 | 标题 | 提要 |
+|---|---|---|
+| 34 | [设计决策地图](Part%20VII%20Design%20Decisions/34-设计决策地图.md) | ADR 格式与生命周期 + 六主题抽样 + 跨篇设计原则 |
+| 35 | [事故复盘与不变量](Part%20VII%20Design%20Decisions/35-事故复盘与不变量.md) | 4 篇 postmortem 深读 + `ctx.invariants` + 防御性模式 |
+
 ### Appendix 附录
 
 - 📘 [官方文档对照](Appendix/官方文档对照.md) —— 官方开发者文档站与本研究的印证/补充/修正
+- 🗺️ [文档与技能全目录](Appendix/文档与技能全目录.md) —— 11 个 skill + 45 个子系统文档 + 每个 docs 子目录/顶层文档的完整测绘
+- 📚 [官方文档地图](Appendix/官方文档地图.md) —— `docs/user`、cordis 教程/API 的分层导览
+- ⚙️ [配置与工具参考（精编）](Appendix/配置与工具参考.md) —— `config-catalog`(132KB) 与 `tool-catalog` 的索引精编
 - 🕵️ [生态反推与泄漏复盘](Appendix/生态反推与泄漏复盘.md) —— 社区第三方反推报告（泄漏/镜像证据）整理与源码交叉核实（`[claimed]` 为主）
 - 🔄 [版本更新追踪 · rc.5→rc.7](Appendix/更新追踪.md) —— 基线之后（2026-08-17，12,404 commits）的增量逐条核实
 - 📎 [Appendix/](Appendix/) —— 上游、证据等级约定、免责

@@ -175,7 +175,7 @@ flowchart LR
 
 **底座关系：Cordis 在下，dsh 在上。** Cordis 本身是一套**通用**的 TypeScript 微内核插件框架，并不为 agent 而生——它是从聊天机器人框架 Koishi 的生态里抽象、独立出来的一层"插件怎么装卸组合"的底层机制，主要由作者 `@shigma` 推动（社区调研记其贡献占绝对多数，约 537/550 commits）`[claimed]`（`全网调研-社区认知地图.md` B 节）。dsh 把这套框架当**底座**：它以 vendored 源码方式收进 `vendor/`、pin 在 `cordis@4.0.0-rc.7`、rescope 成 `@deepseek-ai/cordis`，并让每个 harness 包把它声明为 peerDependency `[verified]`（`vendor/README.md`，详见本章第三、四节）。也就是说，dsh 的每一颗插件都长在 Cordis 提供的那棵 `ctx` 树上。
 
-**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中条目 15 是把上游 Cordis 一个**尚未合并的** PR#41〈Pull Request，拉取请求〉的改动移植进这份 vendored 副本，方向是上游→dsh）`[verified]`（`vendor/README.md:30-50`，条目 15 原文写作 "ports cordiverse/cordis#41"）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节）。
+**谁 vendored 谁：是 dsh vendored 了 Cordis，不是反过来。** 这个方向很关键——Cordis 不知道 dsh 的存在，dsh 却把 Cordis 的源码整个搬进了自己仓库。搬进来的方式不是"装个 npm 包"，而是源码内嵌 + 版本钉死 + 维护一份本地修改日志（现已 18 条，其中条目 15 是把上游 Cordis 的 PR#41〈Pull Request，拉取请求〉的改动移植进这份 vendored 副本，方向是上游→dsh）`[verified]`（`vendor/README.md:30-50`，条目 15 原文写作 "ports cordiverse/cordis#41"）。这么做的目的只有一个：**完全掌控框架层**——底座既然尚在 RC、且 dsh 依赖它的内部行为，那就"拥有"它而非"依赖"它（这一取舍的完整论证见本章第三节）。
 
 **边界划分：Cordis 管"插件怎么装卸组合"，dsh 管"agent 怎么跑"。** 两者的职责可以干净地切开：
 

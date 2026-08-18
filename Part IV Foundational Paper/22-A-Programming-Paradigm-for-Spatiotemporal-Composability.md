@@ -1771,7 +1771,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 
 **Algorithm（10 段，全部逐行转写于 §2.4）**：Alg.1 Effect tracking / Alg.2 Coeffect operations / Alg.3 Reactive notification / Alg.4 Component instantiation / Alg.5 Component lifecycle / Alg.6 Proxy-mediated context access / Alg.7 Isolation realm reassignment / Alg.8 Module classification / Alg.9 Stale-entry detection / Alg.10 Transactional module reload。
 
-**Lemma（共 11 条：§4.4 八条 + 散见 §2.3.1/2.3.3 三条，全陈述于 §2.3.4 深化 G，速查见 A.7）**：Lemma 18/35/38（散见 §2.3.1/2.3.3）、54/55/56/57/68/70/71/72（§4.4）。
+**Lemma（共 11 条）**：§4.4 的八条 54/55/56/57/68/70/71/72 全陈述于 §2.3.4 深化 G、速查见 A.7；另有散见三条——Lemma 35/38 陈述于 §2.3.3，Lemma 18 在 §2.3.1 被引用（未单列全文陈述）。
 
 ---
 

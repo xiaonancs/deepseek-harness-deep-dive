@@ -12,7 +12,7 @@
 - **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来，成为一个领域中立的微内核框架，自述「A Meta-Framework of Spatiotemporal Composability」（可直译为「一个具备时空可组合性的元框架」）`[verified]`（`repo/cordis/README.md:5`）。所谓元框架，就是「用来搭框架的框架」：它自己不做具体业务，只提供组织插件、注入依赖、干净卸载的底座。
 - **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm（Node Package Manager，Node 的包管理器与公共包仓库）依赖装，而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`（rc = release candidate，候选发布版，尚未正式发版）、rescope（改包名作用域，即把 `cordis` 改成带 `@deepseek-ai/` 前缀的私有包名）成 `@deepseek-ai/cordis`，再在其上特化出一个跑编码 agent 的外壳 `[verified]`（`vendor/README.md` 清单表）。
 
-「Cordis 抽象自 Koishi」这一步，两家 README 并未逐字互相点名，只能记为 `[inferred]`；但有一条**一手实锤**把它顶得很稳：论文 §4.3 直接写「**Koishi 的 plugin 就是本文说的 component**」，且说明 Koishi 建立在 Cordis 之上（Koishi 用 v3，论文形式化对应 v4）`[verified]`（第 23 章摘录 `:185`）。也就是说，「Koishi—Cordis 同源、Cordis 是更底层的那一层」这件事，连论文自己都承认了。
+「Cordis 抽象自 Koishi」这一步，两家 README 并未逐字互相点名，只能记为 `[inferred]`；但有一条**一手实锤**把它顶得很稳：论文在案例研究 §5.3 的脚注里直接写「**Koishi 的 plugin 就是本文说的 component**」，且说明 Koishi 建立在 Cordis 之上（Koishi 用 v3，论文形式化对应 v4）`[verified]`（第 23 章摘录 `:188`）。也就是说，「Koishi—Cordis 同源、Cordis 是更底层的那一层」这件事，连论文自己都承认了。
 
 <div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
 
@@ -22,7 +22,7 @@ flowchart LR
   K["Koishi<br/>聊天机器人框架<br/>插件市场 · HMR · DI"]
   C["Cordis<br/>通用微内核 元框架<br/>Spatiotemporal Composability"]
   D["DeepSeek Harness<br/>编码 agent 外壳<br/>一切皆插件"]
-  K -. "剥离通用内核 [inferred]<br/>论文 §4.3 侧证" .-> C
+  K -. "剥离通用内核 [inferred]<br/>论文 §5.3 侧证" .-> C
   C == "整份 vendored + rescope [verified]" ==> D
   subgraph 面向域
     KD["聊天:消息 / 平台适配器"]
@@ -33,7 +33,7 @@ flowchart LR
 ```
 
 </div>
-<p>图 29-1 血缘链。同一套「插件 / 服务 / 上下文」DI（dependency injection，依赖注入——由容器按名字把依赖送到插件手里，而非插件自己去创建）内核，先在 Koishi 里成熟，抽象成领域中立的 Cordis，再被 dsh 整份搬入并特化为 agent 底座。实线为 vendored 事实可证；虚线「抽象自 Koishi」为推断，但有论文 §4.3「plugin 即 component」一手侧证托底。</p>
+<p>图 29-1 血缘链。同一套「插件 / 服务 / 上下文」DI（dependency injection，依赖注入——由容器按名字把依赖送到插件手里，而非插件自己去创建）内核，先在 Koishi 里成熟，抽象成领域中立的 Cordis，再被 dsh 整份搬入并特化为 agent 底座。实线为 vendored 事实可证；虚线「抽象自 Koishi」为推断，但有论文 §5.3「plugin 即 component」一手侧证托底。</p>
 
 ## 二、作者线：Shigma 一人贯穿三者
 
@@ -71,14 +71,14 @@ flowchart TB
 
 ## 三、dsh 如何采用 Cordis（关系层对照）
 
-采用的技术细节（vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、移植上游 PR#41——PR 即 Pull Request，拉取请求；这里是把上游一个尚未合并的 PR 的改动搬进 vendored 副本，方向是上游→dsh）第 21 章已逐条讲清。这里只从**关系层**给一张对照表，把「dsh 对 Cordis 做了什么、动机指向谁」一次看全：
+采用的技术细节（vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、移植上游 PR#41——PR 即 Pull Request，拉取请求；这里是把上游 PR#41 的改动搬进 vendored 副本，方向是上游→dsh）第 21 章已逐条讲清。这里只从**关系层**给一张对照表，把「dsh 对 Cordis 做了什么、动机指向谁」一次看全：
 
 | 动作 | 内容 | 与 Cordis 的关系 | 证据 |
 |---|---|---|---|
 | vendored | 整份源码搬入 `vendor/`，锁 `4.0.0-rc.7` | 从「使用者」升级为「框架层拥有者」：可审计、可打补丁、可锁版本 | `[verified]` `vendor/README.md:3` |
 | rescope | `cordis`→`@deepseek-ai/cordis`，全部 `private:true` | 发布 harness 时框架层一并发布，避免在 npm 抢注上游包名 | `[verified]` `vendor/README.md:5` |
 | 18 处本地修改 | 生命周期硬化、事务化配置对账、HMR 防死锁、纯函数 `applyEntryPatches` 等 | 改的是 Cordis **机制**，动机全来自 dsh **产品需求** | `[verified]` `vendor/README.md:33-50` |
-| 移植上游 PR#41 | 惰性配置解析：依赖激活后才解析 config | 采用方向：把上游（Hieuzest 提交、尚未合并的）PR#41 搬进 vendored 副本 | `[verified]` `vendor/README.md:47`（原文 "ports #41"） |
+| 移植上游 PR#41 | 惰性配置解析：依赖激活后才解析 config | 采用方向：把上游 PR#41 搬进 vendored 副本 | `[verified]` `vendor/README.md:47`（原文 "ports #41"） |
 | 门禁上锁 | `verify-vendored-links` 断言无 registry 副本 | 把「框架层完全自持」从口号变成可执行约束 | `[verified]` `vendor/README.md:5` |
 
 一句话总结这层关系：**dsh 不是被动地「用」Cordis，而是把 Cordis「收编」进自己的代码库、按 agent 场景改造；而 Cordis 作者 Shigma 又正好直接下场给 dsh 提交代码**。这是一种远比「npm install」紧密的采用姿态。
@@ -124,7 +124,7 @@ flowchart TB
 
 最后一条线，是那篇论文如何把三者钉成一个闭环三角。三个顶点各司其职：
 
-- **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性（可逆 effect，任何加载都能干净卸载）」与「空间可组合性（响应式 coeffect，依赖变化自动协调）」形式化，由北大×DeepSeek-AI 三人合著 `[verified]`（第 23 章 `:13`）。它形式化的对象正是 Cordis 的插件范式，§4.3 明说「Koishi 的 plugin 即本文的 component」，并把 Koishi/Cordis 作为存在性验证案例（§4.3、§5）`[verified]`（第 23 章 `:185`）。
+- **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性（可逆 effect，任何加载都能干净卸载）」与「空间可组合性（响应式 coeffect，依赖变化自动协调）」形式化，由北大×DeepSeek-AI 三人合著 `[verified]`（第 23 章 `:13`）。它形式化的对象正是 Cordis 的插件范式，§5.3 明说「Koishi 的 plugin 即本文的 component」，并把 Koishi/Cordis 作为存在性验证案例（§5.3、§5）`[verified]`（第 23 章 `:188`）。
 - **Cordis 是范式的实现**——一个真正把「时空可组合性」跑起来的内核，自述叫「A Meta-Framework of Spatiotemporal Composability」，与论文标题《A Programming Paradigm for Spatiotemporal Composability》共享 "Spatiotemporal Composability" 一语（前缀不同：元框架 vs 编程范式）`[verified]`（`repo/cordis/README.md:5`）。
 - **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向（让 AI agent 在少人监督下连续生成/替换自身组件），而 dsh 恰是这样一个 harness，其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`（第 23 章 `:239`；dsh `packages/self-modification`）。
 
@@ -138,7 +138,7 @@ flowchart TB
   PAPER["论文<br/>Spatiotemporal Composability 范式<br/>形式化 what"]
   CORDIS["Cordis<br/>范式的实现<br/>how"]
   DSH["dsh<br/>范式的应用<br/>self-evolving harness"]
-  PAPER -- "形式化其插件模型<br/>§4.3 Koishi plugin = component" --> CORDIS
+  PAPER -- "形式化其插件模型<br/>§5.3 Koishi plugin = component" --> CORDIS
   CORDIS -- "作底座 vendored" --> DSH
   DSH -. "§8 明示为验证方向<br/>self-evolving harness [inferred]" .-> PAPER
   PAPER -. "Paper 链: cordiverse/paper" .- HOST
@@ -167,4 +167,4 @@ flowchart TB
 - `repo/deepseek-harness` git log — Tianyi Cui 5235 commit（头号提交者）`[verified]`
 - `vendor/README.md:3,5,17,33-50,47` — vendored 动机、rescope、清单表、18 处本地修改、移植上游 PR#41 `[verified]`
 - 第 21 章《参考底座 Cordis 深度对比》 — 采用细节、门禁链路、fiber 状态机（本章不重复）
-- 第 23 章《论文与 dsh 映射》`:13,185,239` — 论文作者/单位、§4.3 plugin=component、§8 自演化 harness 验证方向 `[verified]`/`[inferred]`
+- 第 23 章《论文与 dsh 映射》`:13,188,239` — 论文作者/单位、§5.3 plugin=component、§8 自演化 harness 验证方向 `[verified]`/`[inferred]`

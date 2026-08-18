@@ -10,7 +10,7 @@
 
 - **Koishi** 是起点——一个成熟的跨平台聊天机器人框架，带插件市场、HMR（热模块替换，即改代码不重启就生效）`[verified]`（全网调研已核实 koishi 官方 README）。它早年把「插件、服务、上下文」这套依赖注入机制打磨成熟。
 - **Cordis** 是中间的抽象产物——把 Koishi 里与「聊天」无关的那层通用内核剥离出来，成为一个领域中立的微内核框架，自述「A Meta-Framework of Spatiotemporal Composability」（可直译为「一个具备时空可组合性的元框架」）`[verified]`（`repo/cordis/README.md:5`）。所谓元框架，就是「用来搭框架的框架」：它自己不做具体业务，只提供组织插件、注入依赖、干净卸载的底座。
-- **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm（Node Package Manager,Node 的包管理器与公共包仓库）依赖装，而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`（rc = release candidate，候选发布版，尚未正式发版）、rescope（改包名作用域，即把 `cordis` 改成带 `@deepseek-ai/` 前缀的私有包名）成 `@deepseek-ai/cordis`，再在其上特化出一个跑编码 agent 的外壳 `[verified]`（`vendor/README.md` 清单表）。
+- **DeepSeek Harness** 是终点的采用者——它没把 Cordis 当普通 npm（Node Package Manager，Node 的包管理器与公共包仓库）依赖装，而是把整份源码搬进 `vendor/`、锁在 `4.0.0-rc.7`（rc = release candidate，候选发布版，尚未正式发版）、rescope（改包名作用域，即把 `cordis` 改成带 `@deepseek-ai/` 前缀的私有包名）成 `@deepseek-ai/cordis`，再在其上特化出一个跑编码 agent 的外壳 `[verified]`（`vendor/README.md` 清单表）。
 
 「Cordis 抽象自 Koishi」这一步，两家 README 并未逐字互相点名，只能记为 `[inferred]`；但有一条**一手实锤**把它顶得很稳：论文 §4.3 直接写「**Koishi 的 plugin 就是本文说的 component**」，且说明 Koishi 建立在 Cordis 之上（Koishi 用 v3，论文形式化对应 v4）`[verified]`（第 23 章摘录 `:185`）。也就是说，「Koishi—Cordis 同源、Cordis 是更底层的那一层」这件事，连论文自己都承认了。
 
@@ -39,9 +39,9 @@ flowchart LR
 
 血缘链之所以能顺理成章，是因为背后站着同一批人。这条**作者线**有几个可直接读到的一手节点：
 
-- **Cordis 的绝对主导者是 Shigma**:vendored 与本仓的 LICENSE 版权人都写 `Copyright (c) 2021-present Shigma` `[verified]`(`repo/cordis/LICENSE:3`);git 统计更直接——Cordis 仓库 550 个 commit 里，Shigma 一人占 **537** 个 `[verified]`（`repo/cordis` git log）。这不是「参与者之一」，是「几乎一个人写完」。
+- **Cordis 的绝对主导者是 Shigma**：vendored 与本仓的 LICENSE 版权人都写 `Copyright (c) 2021-present Shigma` `[verified]`（`repo/cordis/LICENSE:3`）；git 统计更直接——Cordis 仓库 550 个 commit 里，Shigma 一人占 **537** 个 `[verified]`（`repo/cordis` git log）。这不是「参与者之一」，是「几乎一个人写完」。
 - **Shigma 同时是 Koishi 的作者** `[verified]`（全网调研已核实）。作者同一性，正是「Cordis 与 Koishi 同源」这个推断最省假设的支点。
-- **Shigma 本人是 dsh 仓库的直接提交者** `[verified]`:`dsh` README 里那条论文链接，正是 Shigma 亲手提交的——commit `0ae8f27b93`「docs: add link to preview paper」，作者 `shigma10826@gmail.com`，同一提交还把仓库原先内置的 `docs/cordis-paper.pdf`（1.24MB）删掉、改为外链预印本 `[verified]`（`repo/deepseek-harness` git show）。
+- **Shigma 本人是 dsh 仓库的直接提交者** `[verified]`：`dsh` README 里那条论文链接，正是 Shigma 亲手提交的——commit `0ae8f27b93`「docs: add link to preview paper」，作者 `shigma10826@gmail.com`，同一提交还把仓库原先内置的 `docs/cordis-paper.pdf`（1.24MB）删掉、改为外链预印本 `[verified]`（`repo/deepseek-harness` git show）。
 - **论文的共同作者 Tianyi Cui，正是 dsh 的头号提交者**——git 核实其 **5235** commits，稳居第一 `[verified]`（`repo/deepseek-harness` git log）。
 
 把这几点连起来：Cordis 的作者（Shigma）下场给 dsh 提交代码，论文的作者（Tianyi Cui）是 dsh 的头号贡献者。**Cordis↔dsh↔论文的人事交集不是猜测，是 git 里躺着的事实。**
@@ -126,7 +126,7 @@ flowchart TB
 
 - **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性（可逆 effect，任何加载都能干净卸载）」与「空间可组合性（响应式 coeffect，依赖变化自动协调）」形式化，由北大×DeepSeek-AI 三人合著 `[verified]`（第 23 章 `:13`）。它形式化的对象正是 Cordis 的插件范式，§4.3 明说「Koishi 的 plugin 即本文的 component」，并把 Koishi/Cordis 作为存在性验证案例（§4.3、§5）`[verified]`（第 23 章 `:185`）。
 - **Cordis 是范式的实现**——一个真正把「时空可组合性」跑起来的内核，自述就叫「A Meta-Framework of Spatiotemporal Composability」，与论文标题同一措辞 `[verified]`（`repo/cordis/README.md:5`）。
-- **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向（让 AI agent 在少人监督下连续生成/替换自身组件），而 dsh 恰是这样一个 harness，其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`（第 23 章 `:239`;dsh `packages/self-modification`）。
+- **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向（让 AI agent 在少人监督下连续生成/替换自身组件），而 dsh 恰是这样一个 harness，其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`（第 23 章 `:239`；dsh `packages/self-modification`）。
 
 三个顶点还共享同一套**文档与仓储基础设施**，这是最硬的一手佐证：Cordis 自己的 README 把 **Paper 指向 `github.com/cordiverse/paper`**（与 Cordis 同属 cordiverse 组织）、把 **Documentation 指向 `deepseek-harness.github.io`** `[verified]`（`repo/cordis/README.md:9-10`、`repo/cordis/packages/core/README.md:9-10`）。也就是说，Cordis 的文档就托管在 DeepSeek Harness 的站点上——底座与产品共用一个 github.io，这本身就是三者一体的证据。
 
@@ -155,7 +155,7 @@ flowchart TB
 
 反过来这也解释了本研究的编排逻辑：Part I 先立「一切皆插件与 Cordis 底座」，Part IV 用一整篇讲论文范式，直到 Part V 才把 Cordis 单独深挖、并在本章收口。顺序不是随意的——**底座在前，产品在后；范式在前，实现在后。**
 
-一句话收束整个 Part V:Cordis 给了 `dsh` 一块经得起审计的主板，论文给了这块主板一套形式化的说明书，而 `dsh` 则在主板上焊出了一台专门跑 agent、还能改造自己的机器。三者同宗、同人、同一套文档基建——理解了这层「聊天框架抽出内核、内核被论文形式化、内核又被 agent 外壳采用」的血缘，你对 DeepSeek Harness 的认识，才算真正落到了地基上。
+一句话收束整个 Part V：Cordis 给了 `dsh` 一块经得起审计的主板，论文给了这块主板一套形式化的说明书，而 `dsh` 则在主板上焊出了一台专门跑 agent、还能改造自己的机器。三者同宗、同人、同一套文档基建——理解了这层「聊天框架抽出内核、内核被论文形式化、内核又被 agent 外壳采用」的血缘，你对 DeepSeek Harness 的认识，才算真正落到了地基上。
 
 ## 源码索引
 

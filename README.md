@@ -20,6 +20,17 @@
 
 DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**一切皆插件**——连模型适配器、工具注册表、会话日志、agent loop 本身都是 [Cordis](https://github.com/cordiverse/cordis) 插件，全部可从配置替换。本研究以**一手源码为准**（结论尽量给 `文件:行号`），对"为什么这样设计"类动机保持证据边界（`[verified]`/`[inferred]`/`[claimed]` 三档标注）；承重的判断，连同它的取舍与根因，都直接写进正文分析。
 
+## 基于的源码版本
+
+本报告分析的对象与一手证据来自以下 git 仓库的具体快照：
+
+- **仓库**：`https://github.com/deepseek-ai/deepseek-harness.git`
+- **分支**：`master`
+- **一手基线提交**：`47f943859bef60e4160492346772ded9b24f765a`（短 `47f943859b`；`Merge pull request #2519 …feat/npm-public`）
+- **基线时间 / 规模**：2026-08-13，累计 **12,293** commits（版本 `0.1.0-rc.5`）
+
+正文（第 01–35 章）一律以此 **rc.5 快照**为准。此后官方推进到 `0.1.0-rc.7`（`master` 提交 `99f6f02fec`、2026-08-17、12,404 commits），这段增量的逐条核实见附录《[版本更新追踪 · rc.5→rc.7](Appendix/更新追踪.md)》。参考底座 Cordis 另取自 `https://github.com/cordiverse/cordis.git`（见 Part V 与第 21 章）。本仓库为独立第三方分析，非 DeepSeek 官方产物。
+
 ## 阅读方式
 
 - **想快速判断值不值得用**：总纲 → Ch01 → Ch19 → Ch20。

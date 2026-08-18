@@ -71,17 +71,17 @@ flowchart TB
 
 ## 三、dsh 如何采用 Cordis（关系层对照）
 
-采用的技术细节（vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、回并上游 PR#41——PR 即 Pull Request，拉取请求，把一批改动提交给上游项目、请求合并）第 21 章已逐条讲清。这里只从**关系层**给一张对照表，把「dsh 对 Cordis 做了什么、动机指向谁」一次看全：
+采用的技术细节（vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、移植上游 PR#41——PR 即 Pull Request，拉取请求；这里是把上游一个尚未合并的 PR 的改动搬进 vendored 副本，方向是上游→dsh）第 21 章已逐条讲清。这里只从**关系层**给一张对照表，把「dsh 对 Cordis 做了什么、动机指向谁」一次看全：
 
 | 动作 | 内容 | 与 Cordis 的关系 | 证据 |
 |---|---|---|---|
 | vendored | 整份源码搬入 `vendor/`，锁 `4.0.0-rc.7` | 从「使用者」升级为「框架层拥有者」：可审计、可打补丁、可锁版本 | `[verified]` `vendor/README.md:3` |
 | rescope | `cordis`→`@deepseek-ai/cordis`，全部 `private:true` | 发布 harness 时框架层一并发布，避免在 npm 抢注上游包名 | `[verified]` `vendor/README.md:5` |
 | 18 处本地修改 | 生命周期硬化、事务化配置对账、HMR 防死锁、纯函数 `applyEntryPatches` 等 | 改的是 Cordis **机制**，动机全来自 dsh **产品需求** | `[verified]` `vendor/README.md:33-50` |
-| 回并上游 PR#41 | 惰性配置解析：依赖激活后才解析 config | 双向关系——dsh 不只取用，也把补丁回流上游 | `[verified]` `vendor/README.md:47` |
+| 移植上游 PR#41 | 惰性配置解析：依赖激活后才解析 config | 采用方向：把上游（Hieuzest 提交、尚未合并的）PR#41 搬进 vendored 副本 | `[verified]` `vendor/README.md:47`（原文 "ports #41"） |
 | 门禁上锁 | `verify-vendored-links` 断言无 registry 副本 | 把「框架层完全自持」从口号变成可执行约束 | `[verified]` `vendor/README.md:5` |
 
-一句话总结这层关系：**dsh 不是被动地「用」Cordis，而是把 Cordis「收编」进自己的代码库、按 agent 场景改造、再把部分改造回流给上游作者（而作者又正好在给 dsh 提交代码）**。这是一种远比「npm install」紧密的采用姿态。
+一句话总结这层关系：**dsh 不是被动地「用」Cordis，而是把 Cordis「收编」进自己的代码库、按 agent 场景改造；而 Cordis 作者 Shigma 又正好直接下场给 dsh 提交代码**。这是一种远比「npm install」紧密的采用姿态。
 
 ## 四、边界划分：谁属通用底座，谁属领域产品
 
@@ -125,7 +125,7 @@ flowchart TB
 最后一条线，是那篇论文如何把三者钉成一个闭环三角。三个顶点各司其职：
 
 - **论文《A Programming Paradigm for Spatiotemporal Composability》**是**形式化的范式**——它把「时间可组合性（可逆 effect，任何加载都能干净卸载）」与「空间可组合性（响应式 coeffect，依赖变化自动协调）」形式化，由北大×DeepSeek-AI 三人合著 `[verified]`（第 23 章 `:13`）。它形式化的对象正是 Cordis 的插件范式，§4.3 明说「Koishi 的 plugin 即本文的 component」，并把 Koishi/Cordis 作为存在性验证案例（§4.3、§5）`[verified]`（第 23 章 `:185`）。
-- **Cordis 是范式的实现**——一个真正把「时空可组合性」跑起来的内核，自述就叫「A Meta-Framework of Spatiotemporal Composability」，与论文标题同一措辞 `[verified]`（`repo/cordis/README.md:5`）。
+- **Cordis 是范式的实现**——一个真正把「时空可组合性」跑起来的内核，自述叫「A Meta-Framework of Spatiotemporal Composability」，与论文标题《A Programming Paradigm for Spatiotemporal Composability》共享 "Spatiotemporal Composability" 一语（前缀不同：元框架 vs 编程范式）`[verified]`（`repo/cordis/README.md:5`）。
 - **dsh 是范式的应用**——论文 §8 明确把「**自演化 agent harness**」列为该范式的下一个验证方向（让 AI agent 在少人监督下连续生成/替换自身组件），而 dsh 恰是这样一个 harness，其 self-modification 能力让 agent 挂载/卸载自己的插件 `[verified]`（第 23 章 `:239`；dsh `packages/self-modification`）。
 
 三个顶点还共享同一套**文档与仓储基础设施**，这是最硬的一手佐证：Cordis 自己的 README 把 **Paper 指向 `github.com/cordiverse/paper`**（与 Cordis 同属 cordiverse 组织）、把 **Documentation 指向 `deepseek-harness.github.io`** `[verified]`（`repo/cordis/README.md:9-10`、`repo/cordis/packages/core/README.md:9-10`）。也就是说，Cordis 的文档就托管在 DeepSeek Harness 的站点上——底座与产品共用一个 github.io，这本身就是三者一体的证据。
@@ -165,6 +165,6 @@ flowchart TB
 - `repo/cordis/packages/core/README.md:9-10` — 同上文档/论文链接 `[verified]`
 - `repo/deepseek-harness` git show `0ae8f27b93` — Shigma（`shigma10826@gmail.com`）提交论文链接、删除内置 pdf `[verified]`
 - `repo/deepseek-harness` git log — Tianyi Cui 5235 commit（头号提交者）`[verified]`
-- `vendor/README.md:3,5,17,33-50,47` — vendored 动机、rescope、清单表、18 处本地修改、回并 PR#41 `[verified]`
+- `vendor/README.md:3,5,17,33-50,47` — vendored 动机、rescope、清单表、18 处本地修改、移植上游 PR#41 `[verified]`
 - 第 21 章《参考底座 Cordis 深度对比》 — 采用细节、门禁链路、fiber 状态机（本章不重复）
 - 第 23 章《论文与 dsh 映射》`:13,185,239` — 论文作者/单位、§4.3 plugin=component、§8 自演化 harness 验证方向 `[verified]`/`[inferred]`

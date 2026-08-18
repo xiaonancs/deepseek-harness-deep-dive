@@ -95,10 +95,10 @@ flowchart LR
 
 **18 处本地修改**，README 在 "Local modifications" 里逐条列全 `[verified]`（`vendor/README.md:33-50`）。它们并非零散补丁，而可归成八类：
 
-- **生命周期硬化**（第 6 条）：在 `cordis/src/fiber.ts` 关掉三处"重入卸载"的缝隙——effect 的持有者包装在 setup 跑之前就登记好、`UNLOADING` 期间拒绝创建新 effect（而 `PENDING`/`LOADING` 期仍合法）、子 fiber 在 `internal/plugin` 发布**之前**就注册父级持有的拔线 `[verified]`（`vendor/README.md:38`；对应 `fiber.ts:265`、`:302`、`:311-316`）。这些是并发卸载场景里最容易漏资源的地方。
+- **生命周期硬化**（第 6 条）：在 `cordis/src/fiber.ts` 关掉三处"重入卸载"的缝隙——effect 的持有者包装在 setup 跑之前就登记好、`UNLOADING` 期间拒绝创建新 effect（而 `PENDING`/`LOADING` 期仍合法）、子 fiber 在 `internal/plugin` 发布**之前**就注册父级持有的拔线 `[verified]`（`vendor/README.md:38`；对应 `fiber.ts:265` effect 持有者预登记、`:420-421` `UNLOADING` 期拒绝新 effect、`:302`/`:311-316` 子 fiber 在 `internal/plugin` 发布前后注册父级拔线并解析依赖）。这些是并发卸载场景里最容易漏资源的地方。
 - **事务化的 Loader/Include 配置对账**（第 8 条）：改配置时"先导入新的、再销毁旧的"，候选应用失败就回滚到旧插件/旧配置，并在生命周期结算后**重新检查**那些卡在依赖门上的 fiber `[verified]`（`vendor/README.md:40`）。这让"改一行配置"从"可能改坏了也不知道"变成"要么整体成功、要么整体回退"。
 - **HMR 精确监听 + 防死锁**（第 9、12 条）：`registerConfig()` 只精确监听那一个配置绝对路径；主监听器加 `ignoreInitial:true`，免得启动时的首次扫描把 boot 刚消费过的文件又当成新增，进而在初次应用中途触发重载、最终把 HMR 卸载和排队重载卡成死锁（那个 bug 会以退出码 13 且无诊断信息的方式发作）`[verified]`（`vendor/README.md:41,44`）。
-- **回并上游的惰性配置解析**（第 15 条）：移植上游 PR（Pull Request，拉取请求——向别人仓库提交改动的请求）[cordiverse/cordis#41]，保留 fiber 的**原始**配置，只有等声明的依赖激活后才经 `internal/config` 解析 `[verified]`（`vendor/README.md:47`）。这解决了"配置里引用了还没就绪的服务就会解析失败"的顺序难题。
+- **移植上游 PR 的惰性配置解析**（第 15 条）：移植上游 PR（Pull Request，拉取请求——向别人仓库提交改动的请求）[cordiverse/cordis#41]，保留 fiber 的**原始**配置，只有等声明的依赖激活后才经 `internal/config` 解析 `[verified]`（`vendor/README.md:47`）。这解决了"配置里引用了还没就绪的服务就会解析失败"的顺序难题。
 - **Node 原生 TS 兼容**（第 4、10 条）：显式标注被擦除的 import，免得 Node 的原生 TypeScript 转换把类型当成运行时导出 `[verified]`（`vendor/README.md:36,42`）。
 - **JSDoc 上游化**（第 7 类，即第 7 条 modification）：给公开成员补齐 `@param`/`@returns` 与契约文档，因为官网 API 生成器会渲染它们、且对无文档成员**硬报错** `[verified]`（`vendor/README.md:39`）。
 - **`include` 提取纯函数 `applyEntryPatches` 并导出 `entryListSchema`**（第 11 条）：把私有的打补丁逻辑抽成一个纯函数，让 `dsh --dump-config` **不启动插件树**就能组合并打印出 include 将要挂载的结果；并且逐条 `insert` 时就建索引，使同一列表里后续的 patch 能配置前面 insert 进来的行——修掉了上游"插入的行无法再被 patch"的毛病 `[verified]`（`vendor/README.md:43`）。
@@ -118,7 +118,7 @@ flowchart LR
 | 内核抽象 | `Context`/`Service`/`Plugin`/`fiber`/`effect` 五件套 `[verified]`(`cordis-primer.md:9-13`) | 完全沿用，不改内核抽象，只在其上定义**能力接缝**（Service Definition/Provider/Consumer 三角）`[verified]`(`CLAUDE.md`) |
 | 扩展点 | 任意服务 + 四种事件派发模式，领域中立 `[verified]`(`cordis-primer.md:19-24`) | 收窄为 agent 专用服务：`ctx.tools`/`ctx.llm`/`ctx.sessions`/`ctx.agents` 等 `[verified]`(`cordis-primer.md:10,42`) |
 | 生命周期/回滚 | fiber 六态机 + effect/disposer 成组回收 `[verified]`(`fiber.ts:147-153,675-676`) | 硬化重入卸载缝隙，并把 Loader/Include 配置改动做成**事务化对账**（失败整体回滚）`[verified]`(`vendor/README.md:38,40`) |
-| 依赖解析 | `inject` 声明 + epoch 纪元追踪，依赖就绪才激活 `[verified]`(`fiber.ts:611-622`) | 沿用；并回并上游 PR#41 做**惰性配置解析**，依赖激活后才解析 config `[verified]`(`vendor/README.md:47`) |
+| 依赖解析 | `inject` 声明 + epoch 纪元追踪，依赖就绪才激活 `[verified]`(`fiber.ts:611-622`) | 沿用；并移植上游 PR#41 做**惰性配置解析**，依赖激活后才解析 config `[verified]`(`vendor/README.md:47`) |
 | 配置/HMR | 声明式 loader + 精确 HMR 热更 `[verified]`(`cordis-primer.md:36-38`) | 精确 config 监听 + `ignoreInitial` 防死锁；抽 `applyEntryPatches` 供 `--dump-config` 干跑 `[verified]`(`vendor/README.md:41,43,44`) |
 | 类型策略 | 依赖合并声明的 Typed Events;rc 阶段 API 未稳定 `[verified]` | 全 `strict`;`vendor/` 锁版本 pin 死，rescope 到 `@deepseek-ai/*` + `private:true` `[verified]`(`vendor/README.md:5`) |
 | 面向域 | Koishi 谱系：聊天机器人/平台适配器 `[verified]`(koishi README) | 编码 agent：工具执行、会话溯源、LLM 流式、子 agent 委派 `[verified]`(`CLAUDE.md`) |
@@ -160,6 +160,6 @@ flowchart TB
 
 **通用性 vs 特化的取舍。** Cordis 追求领域中立，所以它的抽象刻意不带任何"agent"味道；`dsh` 则把这套中立机制往 agent 方向收窄——服务名固定成 `tools`/`llm`/`sessions`，事件语义绑定到工具管线与会话溯源。收窄带来表达力的聚焦，也意味着 `dsh` 的插件很难原样搬到别的 Cordis 应用上。这是产品化的必然代价，谈不上好坏。
 
-**18 条本地修改也是一面镜子，照出上游此刻的不足。** 需要谨慎表述：这些修改**可能**指向 Cordis 在 rc 阶段尚未覆盖的场景——并发卸载的重入安全、配置对账的事务性、Windows 文件写的鲁棒性、以及"不 boot 就预览配置"这类工具化诉求。其中第 15 条明确是回并上游的一个 PR，第 6 条关掉的三处缝隙也带着"重入卸载"这类只有在高频热更场景才暴露的问题气味。换句话说，`dsh` 这类**把框架推到生产强度**的使用者，往往会先于上游踩到边角。这些补丁若最终回流上游（README 为第 7 条 JSDoc 就写了"上游化后即可退休"的退出条件），对 Cordis 生态也是净贡献。但要强调：以上是从修改清单反推的**倾向性判断**，不宜当作对上游质量的定论——rc 阶段本就以"接口未稳定"为前提，补丁多寡更多反映使用强度，而非简单的"好/坏"。
+**18 条本地修改也是一面镜子，照出上游此刻的不足。** 需要谨慎表述：这些修改**可能**指向 Cordis 在 rc 阶段尚未覆盖的场景——并发卸载的重入安全、配置对账的事务性、Windows 文件写的鲁棒性、以及"不 boot 就预览配置"这类工具化诉求。其中第 15 条是把上游一个尚未合并的 PR 移植进 vendored 副本，第 6 条关掉的三处缝隙也带着"重入卸载"这类只有在高频热更场景才暴露的问题气味。换句话说，`dsh` 这类**把框架推到生产强度**的使用者，往往会先于上游踩到边角。这些补丁若最终回流上游（README 为第 7 条 JSDoc 就写了"上游化后即可退休"的退出条件），对 Cordis 生态也是净贡献。但要强调：以上是从修改清单反推的**倾向性判断**，不宜当作对上游质量的定论——rc 阶段本就以"接口未稳定"为前提，补丁多寡更多反映使用强度，而非简单的"好/坏"。
 
 一句话收束：Cordis 给了 `dsh` 一块经得起审计的主板，`dsh` 则在这块主板上焊出了一台专门跑 agent 的机器。理解了这层"底座与产品"的分工，前面二十章里那些"一切皆插件"的设计，才算真正落到了地基上。

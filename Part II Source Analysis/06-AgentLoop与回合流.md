@@ -213,7 +213,7 @@ flowchart TD
 
 `ReactLoopAgent` 是 `dsh` 唯一具体的产品回合流：step 以"一次模型请求 + 其工具"为原子，turn 是其容器；输入经单一 inbox 进入、由显式 `wakeup` 位与取消状态共同决定是否起步；`agent/pre-step` 是请求派生前唯一可改写/可拒绝的串行闸门，被拒的空 claim 也照样关一个零 step 的 durable turn；失败与取消经"逐监听器隔离 + step/turn 收敛 + driver 边界吞掉"三层容器化，并靠 append-only 日志与运行时不变量保证请求随时可重构。
 
-下一章（第 07 章）转向这条循环的"真相之源"——append-only 会话日志本身：`SessionEvent` 的十二种变体、`deriveMessages()` 的投影规则，以及"model-visible ⟺ logged"不变量在持久化与回放中的完整含义。本章反复引用的"日志派生请求""事件即扩展点"，都将在那里落到数据结构层面。
+下一章（第 07 章）转向这条循环的"真相之源"——append-only 会话日志本身：`SessionEvent` 的 13 种变体、`deriveMessages()` 的投影规则，以及"model-visible ⟺ logged"不变量在持久化与回放中的完整含义。本章反复引用的"日志派生请求""事件即扩展点"，都将在那里落到数据结构层面。
 
 ## 源码索引
 

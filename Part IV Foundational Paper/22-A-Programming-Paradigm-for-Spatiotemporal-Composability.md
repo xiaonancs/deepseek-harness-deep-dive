@@ -14,7 +14,7 @@
 
 ### 1.1 一句话概括
 
-把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立Spatiotemporal Composability 的形式基础，并落地为 Cordis。
+把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立 Spatiotemporal Composability 的形式基础，并落地为 Cordis。
 
 **两维度精确定义**（§1.1，全文的坐标轴）：
 
@@ -30,7 +30,7 @@
 1. **形式化 revertible effects（§3.1）**：每次 context 变换都携带显式逆元并由运行时 track，卸载时结构性地完整回收，确立 local temporal composability。
 2. **形式化 reactive coeffects（§3.2）**：组件把依赖声明为 specification，context 每次变化都按 activating / deactivating / neutral 通知组件，确立 local spatial composability。
 3. **统一 context 范式（§3.3）**：把 effect context 与 coeffect context 合成单一 context 类型 $\Gamma_\infty$，由 coeffect 上的 observational equivalence 赋予 effect 以 independence。
-4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把Spatiotemporal Composability 从单组件推广到交错组件系统。
+4. **动态组合演算（§4）**：以 component / fiber 为对象，给出生命周期的 operational semantics，元理论把 Spatiotemporal Composability 从单组件推广到交错组件系统。
 5. **Cordis 实现 + Koishi 案例（§5）**：core library（effect tracking + coeffect resolution）+ declarative loader（config reconciliation + HMR，Hot Module Replacement 热模块替换：文件改动后不重启进程、就地换掉受影响模块），并以 4000+ 插件的 Koishi 生产系统验证。
 
 ### 1.3 元信息表
@@ -57,7 +57,7 @@
   - **§3.1 可逆 effect** 四级构造：`∘` 幺半群 → track/recover（Def.2/3/6、Thm.5/7）→ effect function $\mathfrak E_\Gamma/\mathfrak E^*_\Gamma$ 与 $\diamond$（Def.8/9/12、Thm.10/11/13/15/16）→ independence（Def.19、Thm.20、Cor.21）。
   - **§3.2 响应式 coeffect**：coeffect context $\Sigma$、get/set（Def.22/23）、satisfaction $\vDash$ 与 notify 三态（Def.25/26）、isolation $\Sigma^{iso}$ 与 interception $\Sigma^{inter}$（Def.28–31）。
   - **§3.3 the context paradigm**：统一 $\Gamma_\infty$（Def.32）、observational equivalence（Def.33–37、Lemma 35/38）、由 ≃ 供 independence（Def.39/41、Thm.40/42）、与 State monad / useEffect / Spring 的定位对照。
-- **§4 A Calculus of Dynamic Composition**：4.1 component/fiber 七元组与 registry（Def.43–46）；4.2 base calculus（五规则）；4.3 transitions in progress（Withdrawal / Iteration / Asynchrony / Failure 四类精化，十条规则 = Table 1）；**4.4 metatheory 五定理**（Preservation Thm.59、Temporal = Recovery exactness Thm.61 + Terminal recovery Cor.62、Spatial = Ordering Thm.63 + Resolution coherence Thm.64、Progress Thm.66、Confluence Thm.73）。
+- **§4 A Calculus of Dynamic Composition**：4.1 component/fiber 七元组与 registry（Def.43–45）；4.2 base calculus（Def.46 committed/target view + 五规则）；4.3 transitions in progress（Withdrawal / Iteration / Asynchrony / Failure 四类精化，十条规则 = Table 1）；**4.4 metatheory 五定理**（Preservation Thm.59、Temporal = Recovery exactness Thm.61 + Terminal recovery Cor.62、Spatial = Ordering Thm.63 + Resolution coherence Thm.64、Progress Thm.66、Confluence Thm.73）。
 - **§5 Implementation & Case Study**：5.1 core library（Algorithm 1–6）、5.2 component loader（声明式配置 + reconciliation + HMR，Algorithm 7–10）、5.3 Koishi 案例（4000+ 插件，existence-and-adoption）。
 - **§6 Discussion**：6.1 System Boundary、6.2 Service Multiplexing、6.3 Access Control & Sandboxing、6.4 Language Independence、6.5 Mutual Dependencies、6.6 Dependency Typing & Versioning、6.7 Co-Design。
 - **§7 Related Work**：7.1 effect/coeffect 系统、7.2 编程范式（COP 面向上下文编程 / AOP 面向切面编程；英文全称见 §3.6.2）、7.3 temporal、7.4 spatial。
@@ -241,7 +241,7 @@ flowchart TB
 
 **逆元的一侧性**：$g$ 是 $f$ 的**左逆**（约束是 $g\circ f$，绝不是 $f\circ g$）。成对变换带自己的乘法——
 
-$$(f_1,g_1)\diamond(f_2,g_2):=(f_1\circ f_2,\; g_2\circ g_1)$$
+$$(f_1,g_1)\circ(f_2,g_2):=(f_1\circ f_2,\; g_2\circ g_1)$$
 
 （twisted composition，Def.1）：左操作数后作用，逆元以相反顺序累积。
 
@@ -586,7 +586,7 @@ _论文 caption 中译_：**图 2 | 含进行中转移的生命周期；两个�
 
 **metatheory（§4.4）**：Preservation（Thm.59，well-formed registry 被规则保持）；Recovery exactness（Thm.61）与 Terminal recovery（Cor.62，退出 fiber 对 state 的贡献归零）；Temporal Composability 由 recover 的 LIFO 精确性给出；Spatial Composability 经 Ordering（Thm.63，依赖满足才转移）与 Resolution coherence（Thm.64，单次转移不跨两次 coeffect 解析）；Progress（Thm.66，≺ 无环即总能推进）；Confluence（Thm.73，到达 quiescent 态时结果唯一）。
 
-**结论（原文，整节）**：把可逆 effect 与响应式 coeffect 合进 component 的生命周期演算，元理论把单组件的Spatiotemporal Composability**推广到整个交错组件系统**。
+**结论（原文，整节）**：把可逆 effect 与响应式 coeffect 合进 component 的生命周期演算，元理论把单组件的 Spatiotemporal Composability**推广到整个交错组件系统**。
 
 </td><td>
 
@@ -1771,7 +1771,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 
 **Algorithm（10 段，全部逐行转写于 §2.4）**：Alg.1 Effect tracking / Alg.2 Coeffect operations / Alg.3 Reactive notification / Alg.4 Component instantiation / Alg.5 Component lifecycle / Alg.6 Proxy-mediated context access / Alg.7 Isolation realm reassignment / Alg.8 Module classification / Alg.9 Stale-entry detection / Alg.10 Transactional module reload。
 
-**Lemma（8 条，全陈述于 §2.3.4 深化 G，速查见 A.7）**：Lemma 18/35/38（散见 §2.3.1/2.3.3）、54/55/56/57/68/70/71/72（§4.4）。
+**Lemma（共 11 条：§4.4 八条 + 散见 §2.3.1/2.3.3 三条，全陈述于 §2.3.4 深化 G，速查见 A.7）**：Lemma 18/35/38（散见 §2.3.1/2.3.3）、54/55/56/57/68/70/71/72（§4.4）。
 
 ---
 
@@ -1954,7 +1954,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | C1 | 可逆 effect 确立 local temporal composability | §1.2、§2.3.1 | §1.3 贡献 1、§3.1 | ✅ 一致 | 保留 |
 | C2 | 响应式 coeffect 确立 local spatial composability | §1.2、§2.3.2 | §1.3 贡献 2、§3.2 | ✅ 一致 | 保留 |
 | C3 | observational equivalence 供 effect 以 independence | §1.2、§2.3.3 | §1.3 贡献 3、§3.3.2 Thm.40 | ✅ 一致 | 保留 |
-| C4 | 元理论把Spatiotemporal Composability 从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
+| C4 | 元理论把 Spatiotemporal Composability 从单组件推广到交错系统 | §2.3.4 | §1.3 贡献 4、§4.4 | ✅ 一致 | 保留 |
 | C5 | Koishi 是 observational、existence-and-adoption 论证，非受控对比 | §2.5、§3.5.1 | §5.3（原文明言） | ✅ 一致 | 保留 |
 | C6 | HMR 无需开发者标注 acceptance boundary | §2.4、§四 A.2 | §5.2.2 | ✅ 一致 | 保留 |
 | C7 | in-memory 状态默认不跨 reload 存活 | §2.4、§2.6、§3.5.1 质疑③ | §7.3（"does not survive a reload unless…"） | ✅ 一致 | 保留 |

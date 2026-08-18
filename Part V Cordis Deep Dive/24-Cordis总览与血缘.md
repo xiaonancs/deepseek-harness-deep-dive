@@ -70,7 +70,7 @@ flowchart LR
 
 ## 三、九个包与内核九模块
 
-打开 `package.json` 会看到工作区（workspaces）指向 `external/*` 与 `packages/*``[verified]`（`repo/cordis/package.json:7-10`），其中 `external/` 目前为空，实体代码都在 `packages/` 下的 **9 个包**里（`ls packages/` 可复现，`[verified]`）。下表「npm 名」一列，即各包发布到 npm（Node Package Manager，Node 的包管理器与公共包仓库）时使用的名字：
+打开 `package.json` 会看到工作区（workspaces）指向 `external/*` 与 `packages/*``[verified]`（`repo/cordis/package.json:7-10`），其中 `external/` 目录实际缺席（workspaces 的 `external/*` glob 匹配为空），实体代码都在 `packages/` 下的 **9 个包**里（`ls packages/` 可复现，`[verified]`）。下表「npm 名」一列，即各包发布到 npm（Node Package Manager，Node 的包管理器与公共包仓库）时使用的名字：
 
 | 包名 | npm 名 | 版本 | 职责 |
 | --- | --- | --- | --- |
@@ -190,4 +190,4 @@ sequenceDiagram
 - `repo/cordis/packages/core/src/fiber.ts:277-340` —— `effect` 方法实现（执行器 `_execute` 见 `fiber.ts:229-273`）
 - `repo/cordis/packages/core/src/index.ts:1-7` —— 出口（不含 reflect）
 - 各包 `package.json` —— 9 个包的 npm 名与版本
-- git 命令：`git rev-list --count HEAD`（550）、`git log --reverse`（2022-05-18 起）、`git shortlog -sn`（Shigma 537/550）、`git ls-files | wc -l`（112）、`git ls-files '*.ts' | wc -l`（58）、`git log --all --format="%s %b" | grep -i koishi`（4 条 Koishi issue 引用）
+- git 命令：`git rev-list --count HEAD`（550）、`git log --reverse`（2022-05-18 起）、`git shortlog -sn`（Shigma 537/550）、`git ls-files | wc -l`（112）、`git ls-files '*.ts' | wc -l`（58）、`git log --all --format="%s %b" | grep -i koishi`（Koishi issue 引用；正文列举 4 条示例，实际命中更多）

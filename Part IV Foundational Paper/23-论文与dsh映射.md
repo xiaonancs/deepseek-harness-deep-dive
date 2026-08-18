@@ -8,7 +8,7 @@
 
 ## 一、论文核心与元信息
 
-**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向Spatiotemporal Composability 的编程范式）
+**标题**：《A Programming Paradigm for Spatiotemporal Composability》（一种面向 Spatiotemporal Composability 的编程范式）
 
 **作者与单位**：Yifan Shi¹²、Wei Zhang¹、Tianyi Cui²。其中 ¹ 为 **Peking University（北京大学）**，² 为 **DeepSeek-AI**。这是一篇学术界与工业界合著的论文——理论骨架来自北大，工程验证来自 DeepSeek 一侧的实践者。
 
@@ -26,8 +26,8 @@
 
 1. **形式化 revertible effects（§3.1）**：每个 context 变换都配一个显式的逆函数，使得 effect tracking 与 recovery 成为**保持组合运算**的操作，从而保证组件移除时**完全的状态恢复**。这是动态时间可组合性的代数基础。
 2. **形式化 reactive coeffects（§3.2）**：组件把自己的需求声明为一个 typed dependency set，一套基于"满足性"的通知机制自动把状态变迁分类为 **activating / deactivating / neutral**（激活 / 去激活 / 中性）。这是动态空间可组合性的代数基础。
-3. **统一 context 类型（§3.3）**：把 effect context 与 coeffect context 整合为**单一 context type**，由 coeffect 上的 observational equivalence 赋予 effect 以 independence，构成一套面向Spatiotemporal Composability 的编程范式。
-4. **动态组合演算（§4）**：把两种机制合进 component 概念、为其生命周期赋予 operational semantics，元理论把Spatiotemporal Composability 从单组件推广到交错组件系统。
+3. **统一 context 类型（§3.3）**：把 effect context 与 coeffect context 整合为**单一 context type**，由 coeffect 上的 observational equivalence 赋予 effect 以 independence，构成一套面向 Spatiotemporal Composability 的编程范式。
+4. **动态组合演算（§4）**：把两种机制合进 component 概念、为其生命周期赋予 operational semantics，元理论把 Spatiotemporal Composability 从单组件推广到交错组件系统。
 5. **在 Cordis 中实现（§5）**：一个"Spatiotemporal Composability 元框架"，含 core library（effect tracking + coeffect resolution）与 declarative component loader（config reconciliation + hot module replacement，热模块替换，简称 HMR，指程序运行中直接换掉某个模块而不整体重启）；并以 **Koishi** 聊天机器人平台（4000+ 生产环境社区插件）做案例研究验证。
 
 ---

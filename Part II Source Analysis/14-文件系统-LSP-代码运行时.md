@@ -157,7 +157,7 @@ sequenceDiagram
 
 要强调的是：无论是 worker 线程、进程隔离还是 `fs-sandbox` 这道 in-process 栅栏，源码口径都明说"这是 containment，不是安全边界"——模型代码拥有与 bash 等价的信任，`isolation` 字段只是诊断标签而非安全声明。`fs-sandbox` 的注释更直言其栅栏"是可信代码里对模型控制路径的策略检查，不是内核边界"，并主动接受 TOCTOU（time-of-check to time-of-use，即"检查那一刻"与"真正使用那一刻"之间，状态被人动了手脚的时间窗）残余风险；真正"不可信代码的内核级隔离"被留给 `ctx.shell` 的 `dsh-bash-sandbox`（`packages/fs/fs-sandbox/src/index.ts` 模块注释、`packages/code-runtime/code-runtime-worker-thread/src/index.ts:1-7` `[verified]`）。读文档者只要守住这层区分，就不会误把 `isolation:'worker-thread'` 当成运行不可信第三方代码的安全承诺。
 
-**横向对比**：在语义导航这条线上，Claude Code、Codex 等同类 harness 多以文本搜索为主、语义导航并非一等公民 `[claimed]`；dsh 则把它做成一项可选的一等能力，却刻意克制表面积——只暴露定义/引用/实现/悬浮四类语义操作的闭合联，通用 stdio 宿主按扩展名配置任意语言、绝不把 LSP 协议类型泄漏进工具与 provider。好处是增删操作变成一处"跨接缝编译强制"的改动（闭合 union + `assertNever`），工具与 provider 都不碰协议、还换来稳定的模型契约；代价是 symbols、call-hierarchy 这类需要不同 schema 的能力被挡在四操作之外（操作闭合与通用宿主 `[verified]`：`packages/lsp/lsp/src/types.ts`、`lsp-stdio/src/index.ts:82-107`；竞品对比 `[claimed]`）。
+**横向对比**：在语义导航这条线上，Claude Code、Codex 等同类 harness 多以文本搜索为主、语义导航并非一等公民 `[claimed]`；dsh 则把它做成一项可选的一等能力，却刻意克制表面积——只暴露定义/引用/实现/悬浮四类语义操作构成的闭合联合类型（closed union，即"就这几种、不再多"的封闭集合），通用 stdio 宿主按扩展名配置任意语言、绝不把 LSP 协议类型泄漏进工具与 provider。好处是增删操作变成一处"跨接缝编译强制"的改动（闭合 union + `assertNever`），工具与 provider 都不碰协议、还换来稳定的模型契约；代价是 symbols、call-hierarchy 这类需要不同 schema 的能力被挡在四操作之外（操作闭合与通用宿主 `[verified]`：`packages/lsp/lsp/src/types.ts`、`lsp-stdio/src/index.ts:82-107`；竞品对比 `[claimed]`）。
 
 ## 七、仍存在的问题与局限
 
@@ -176,7 +176,7 @@ sequenceDiagram
 - `packages/fs/fs-observation-policy/src/index.ts:36-41`（owner 收窄）、`:65-88`（写/改决策）、`:106-129`（三事件监听 + HMR 释放）
 - `packages/fs/tool-fs/src/write.ts:111`（waterfall 取意图）、`:122`（emit observed）
 - `packages/fs/fs-sandbox/src/index.ts`（模块注释：per-call 栅栏、containment 非内核边界、TOCTOU）
-- `packages/lsp/lsp/src/types.ts`（4 操作闭合联、closed result union）
+- `packages/lsp/lsp/src/types.ts`（4 操作的闭合联合类型 closed union、闭合结果联合 closed result union）
 - `packages/lsp/lsp-stdio/src/index.ts:47`（inject fs/lsp/subprocess）、`:82-107`（server 表配置）、`:217-303`（每工作区进程池 + 透明重试）
 - `packages/lsp/lsp-stdio/src/host.ts:54-58`（processPath/fileUrl 取执行世界坐标）、`:91`（contains 越界检查）、`:97`（TOCTOU XXX）
 - `packages/lsp/tool-lsp/src/index.ts:182-185`（工作区必需）

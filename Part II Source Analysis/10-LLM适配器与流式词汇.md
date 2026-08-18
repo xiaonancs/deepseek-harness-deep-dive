@@ -213,6 +213,8 @@ flowchart TD
 
 回到开头那三个问题，本章的答案是：模型响应在 `dsh` 内部长成**内容块数组 + `StreamChunk` 原始流**的样子；这套词汇之所以敢称"中立"，是靠**两个内部实现迥异的真实适配器**在同一份契约上持续互证，而不是靠单一实现自说自话；`ctx.llm` 则是模型域的那道能力接缝，一次 `registerAdapter` 就能替换整个产品背后的模型。往下，第 11 章会展开"能力接缝"三个角色（Service Definition / Provider / Consumer）的通用机制——本章的 `ctx.llm` 正是它落在模型域的一个具体样本；工具参数如何从原始 JSON 串一路走到执行，见第 9 章工具管线；`StreamChunk` 如何被记录、并保证"模型可见 ⟺ 已记录"，见第 7 章会话日志。
 
+> **rc.6–rc.7 更新（截至 2026-08-17）**：DeepSeek 适配器的推理力度枚举从 `off / high / max` 扩为 **`off / low / high / max`**，新增介于"关闭"与"高"之间的 `low` 档 `[verified]`（`packages/llm/llm-deepseek/src/index.ts:70,95`、`adapter.ts:96`、`serialize.ts:26-49`；PR #2549）。这正落在"reasoning 力度由适配器自己声明"的能力框架内，本章判断不变。详见 [Appendix/更新追踪](../Appendix/更新追踪.md)。
+
 ## 源码索引
 
 - `packages/llm/llm/src/types.ts:99` — `ContentBlockMap`（可合并扩展内容块）

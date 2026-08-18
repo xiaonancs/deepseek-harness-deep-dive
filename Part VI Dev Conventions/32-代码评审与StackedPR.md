@@ -49,7 +49,7 @@ flowchart TD
 `dsh-merging-stacked-prs` 这个 skill 把落地拆成六个阶段：
 
 1. **要求原生栈支持**：动 GitHub 状态前先跑 `gh stack --version`，官方扩展或服务端栈功能不可用就**硬停**，绝不退回逐个手工合并；栈要求所有 head 分支在同一仓库，跨 fork 的链也硬停 `[verified]`（`:10-12`）。
-2. **补齐缺失的栈成员**：拉当前 PR 元数据和精确 head OID（提交哈希），用 GraphQL 查 `PullRequest.stack` 和 `stackEntry.position`——"这个官方对象，而不是仅凭 base 分支推断，才是栈成员的权威"；作者全一致就自动按自底向上顺序 `gh stack link`，作者不一致则先问用户 `[verified]`（`:50-66`）。
+2. **补齐缺失的栈成员**：拉当前 PR 元数据和精确 head OID（提交哈希），用 GraphQL 查 `PullRequest.stack` 和 `stackEntry.position`——"这个官方对象，而不是仅凭 base 分支推断，才是栈成员的权威"；作者全一致就自动按自底向上顺序 `gh stack link`，作者不一致则先问用户 `[verified]`（`:14-20,50-66`）。
 3. **仅在需要时刷新**：不为"有刷新机制"就重写分支；真需要更新 trunk（主干）时，二选一——原生级联 rebase（`gh stack sync`/`gh stack rebase`，会带租约保护地强推）或增量 merge-forward（把 trunk 并入最底层、再逐层向上传播），任何历史重写后都要重新拉取精确 head、重新审未解决的评审线程/批准/可合并性/检查 `[verified]`（`:68-75`）。
 4. **合并前预检范围**：临合并前再查一次官方栈，要求每个选中 PR 都 open、非 draft、顺序正确、满足评审与检查要求；"一个就绪的顶层不能证明它的依赖也就绪" `[verified]`（`:77-81`）。
 5. **通过栈 API 合并**：`gh stack merge <栈号> --yes --merge`，GitHub 自底向上合并并自动重定向剩余上层；绝不传 `--delete-branch`、不手工重定向、不退回 `gh pr merge` `[verified]`（`:83-99`）。

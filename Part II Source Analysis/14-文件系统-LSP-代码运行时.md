@@ -166,6 +166,41 @@ sequenceDiagram
 - **LSP 源码替换的 TOCTOU**：`host.ts` 里留了个 `XXX(lsp-source-replacement)` 标记。TOCTOU 在这里的含义是：如果在"规范容器检查"和"provider 打开文件流"这两步之间源码被替换，那么"稳定文件句柄身份"这件事就需要重新斟酌（`packages/lsp/lsp-stdio/src/host.ts:97`）。
 - **containment 非安全边界**（见第六节）：这是一个明摆着的设计取舍，不是缺陷；但部署者心里得清楚——它拦得住误操作，拦不住蓄意攻击。
 
+## 八、补充能力域：联网搜索与抓取（`ctx.web`）
+
+前文的文件系统（`ctx.fs`）与语言服务器协议（Language Server Protocol，LSP）都属于"可选能力缝"——它们不在 Agent 主循环的脊柱上，装上则多一种本领，卸下也不影响循环转动。`ctx.web` 是同一家族的第三位成员，特别之处在于：它是"一服务两操作"——搜索（search）与抓取（fetch）共用一个 `ctx.web` 中间层 `[verified]`（`docs/subsystems/web.md` 开篇）。
+
+回到第 11 章的"能力缝三角色"——服务定义、服务提供者、消费者。`ctx.web` 把这三者切得很干净：
+
+- **服务定义** `WebRuntime` 只做两件事——登记提供者、在执行时选出一个可用提供者。`search()` 与 `fetch()` 各自 `resolveProvider(...)` 后转交，搜索还会在返回路径上按 `maxResults` 截断 `sources[]` 并置 `truncated` `[verified]`（`packages/web/web/src/index.ts:74,140,157,172,196`）。
+- **服务提供者** 实现 `WebSearchProvider` 或 `WebFetchProvider` 接口，各带一个 `available()`：这是廉价的本地检查（凭据在否、配置能否解析），明确禁止发起网络调用。例如 DeepSeek 搜索提供者的 `available()` 只校验 API Key、`baseURL` 可解析、`maxTokens`/`maxUses` 为正整数 `[verified]`（`packages/web/web/src/types.ts:101,113`；`web-search-deepseek/src/provider.ts:177,189`）。
+- **消费者** `dsh-tool-web` 独占模型可见的一切：工具名 `web_search`/`web_fetch`、参数模式、系统提示措辞与结果渲染 `[verified]`（`packages/web/tool-web/src/search.ts:225`、`fetch.ts:437`）。
+
+关键在于"换 provider 不改模型提问方式"。模型发起搜索时给出的参数**只有一个 `query`**，抓取时只有一个 `url`；`maxResults` 是消费者层（`searchMaxResults`，默认 `8`）的边界，穿过缝隙传下去、在回来时由缝强制执行 `[verified]`（`search.ts:228,261`；`fetch.ts:440,481`）。因此把 Exa、Perplexity 或 DeepSeek 中的任一个换掉，模型的提问方式一字不变 `[verified]`（`docs/subsystems/web.md`）。
+
+<div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+flowchart TB
+  M["模型"] -->|query / url| T["dsh-tool-web<br/>消费者"]
+  T -->|ctx.web.search / fetch| W["WebRuntime<br/>服务定义"]
+  W -->|resolveProvider| P1["搜索 provider<br/>Exa / Perplexity / DeepSeek"]
+  W -->|resolveProvider| P2["抓取 provider<br/>fetch-http"]
+```
+
+</div>
+
+> 图注：模型只递交 `query`/`url`；`ctx.web` 在执行时选出可用 provider，换 provider 不触及上层。
+
+结果类型也统一为可移植形状。`WebSearchResult` 含可选 `content`、`sources[]` 与 `truncated`；每个 `WebSearchSource` 一定有 `url`，`title`/`snippet`/`publishedAt` 皆可选——因为不是每家 provider 都返回，消费者显示时以 `title ?? hostname(url)` 兜底 `[verified]`（`types.ts:34,49`；`search.ts:34`）。抓取侧 `WebFetchResult` 把非 2xx 状态视为正常结果而非错误，`WebFetchBody` 是 `html`/`text` 的**封闭判别联合**，消费者 `switch` 末尾以 `assertNever` 收口，新增一种 `kind` 会在编译期逼所有消费者处理 `[verified]`（`types.ts:73,93`；`fetch.ts:242`）。失败才走 `WebError`，其 `code` 是开放字符串，provider 可自定义码而不必改动 `dsh-web` `[verified]`（`types.ts:129`）。
+
+**补充源码索引（联网）**
+- `packages/web/web/src/types.ts:15,34,49,63,73,93,101,113,129` — 请求/结果/提供者/错误类型
+- `packages/web/web/src/index.ts:74,140,157,172,196` — `WebRuntime` 与执行期选择、`maxResults` 截断
+- `packages/web/web-search-deepseek/src/provider.ts:177,189` — DeepSeek 搜索提供者与 `available()`
+- `packages/web/tool-web/src/search.ts:225,261`、`fetch.ts:437,481,242` — `web_search`/`web_fetch` 工具与 `assertNever` 收口
+
 ## 小结与衔接
 
 本章的三条能力域各自解决不同痛点：fs 用"事件闸 + 可选 guard"把读前置策略与落盘机制解耦；LSP 用通用 stdio 宿主把四类语义查询收敛到无协议泄漏的接缝；Code Mode 把工具编排搬进 worker、以日志级子分发换取模型历史的精简。它们共享的深层机制是"执行世界"这一跨能力坐标：provider 一换，fs/LSP/subprocess/code-runtime 同步迁移到本地盘或 E2B 沙箱，而模型契约不动——这与第 11 章的能力接缝、第 12 章的沙箱迁移直接咬合。下一章转向 subagent 与 workflow，看 dsh 如何把"一个 agent"进一步组合成协作与编排。

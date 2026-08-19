@@ -69,6 +69,23 @@ flowchart TB
 </div>
 <p>图 29-2 作者线。实线均为 git / LICENSE 可证的一手关系：Shigma 主导 Cordis 与 Koishi 并给 dsh 提交论文链接，Tianyi Cui 既是论文共同作者又是 dsh 头号提交者。唯一虚线「Yifan Shi 即 Shigma」为音名相合的推断，未取得论文正文直接证据。</p>
 
+### Yifan Shi / Shigma 的一脉相承
+
+把作者线单独抽出来看，会发现这项工作背后是**同一个人多年一以贯之的技术主张**。先把能核实的档案摆清楚（均为一手可查）：
+
+- GitHub 用户 `shigma`：账号 2017 年注册、`company` 字段填 `@deepseek-ai`、地点 Beijing、同时是 `@koishijs` 与 `@cordiverse` 两个组织的成员 `[verified]`（`gh api users/shigma`，其公开邮箱字段为 `i@shig.ma`）；而 git 提交与包作者字段署名为 `Shigma <shigma10826@gmail.com>` `[verified]`（`repo/cordis/packages/core/package.json:31`、`repo/cordis` git log）——正是这个 git 邮箱把三个仓库串起来。
+- npm 上 `koishi` 与 `cordis` 两个包的 author 与唯一 maintainer 都是 `Shigma <shigma10826@gmail.com>` `[verified]`（npm registry）。
+- Koishi（起于 2019）→ Cordis（版权 2021 起、首提交 2022-05-18、537/550 提交）→ dsh（Shigma 亲手提交论文链接 `0ae8f27b93`）——三个仓库的关键节点都由同一邮箱串起 `[verified]`（见上及 Ch24 时间线）。
+
+**一脉相承的，与其说是"人"，不如说是一套主张。** 从 Koishi 到 Cordis 再到这篇论文，反复出现的是同一组设计承诺：一切能力做成**插件**、运行时**热重载 / HMR**、依赖走**控制反转 / 依赖注入（IoC / DI）**、副作用**可逆**（携逆元、可 track/recover）。需要诚实说明证据口径：本报告**未能取得** Shigma 的个人宣言式文本（其 GitHub 无博客/推特链接，公开检索受限），因此这套"主张"**只能由作品与论文本身佐证**（Koishi/Cordis 的 README 与特性、论文 §3–§5），而非引自个人语录——这一层归属记 `[inferred]`。
+
+论文作者署名里还藏着一个值得一提的一手细节：**第一作者 Yifan Shi 同时挂 ¹北京大学 与 ²DeepSeek-AI 两个单位**，而 Wei Zhang 仅挂北大、Tianyi Cui 仅挂 DeepSeek-AI `[verified]`（`repo/paper-fulltext.txt` 首页署名）。也就是说，第一作者是这条"学界—产业"链上唯一横跨两端的人——这与"Cordis 作者下场写 dsh、论文又由 dsh 头号提交者 Tianyi Cui 共同署名"的人事交集彼此呼应。
+
+两点必须守住证据边界：
+
+1. **「Yifan Shi 即 Shigma」仍只是 `[inferred]`**：论文只给出罗马字 "Yifan Shi"，正文未出现 GitHub handle；该等同关系靠"同挂 DeepSeek-AI + 姓氏罗马字相合 + 论文实现与案例几乎由 Shigma 一人写就 + Shigma 亲手把论文链接提交进 dsh"这几条旁证支撑，**没有任何一手来源直接声明二者是同一人**，故维持推断级别、不升格为事实。
+2. **名字的汉字写法无一手来源**：论文通篇只有罗马字 "Yifan Shi"，无汉字、无邮箱、无致谢署名。本报告他处（Ch22 元信息）曾按 `施逸凡` 渲染，系编辑性补充；坊间亦有 `施一凡` 等同音写法——「逸凡 / 一凡」皆罗马化为 Yifan，**两者均未获一手证实**。凡涉及本人，本报告一律以罗马字 "Yifan Shi" 为准。
+
 ## 三、dsh 如何采用 Cordis（关系层对照）
 
 采用的技术细节（vendored `cordis@4.0.0-rc.7`、rescope 到 `@deepseek-ai/cordis`、18 条本地修改、移植上游 PR#41——PR 即 Pull Request，拉取请求；这里是把上游 PR#41 的改动搬进 vendored 副本，方向是上游→dsh）第 21 章已逐条讲清。这里只从**关系层**给一张对照表，把「dsh 对 Cordis 做了什么、动机指向谁」一次看全：

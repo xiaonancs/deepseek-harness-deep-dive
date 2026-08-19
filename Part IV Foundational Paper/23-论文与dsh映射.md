@@ -241,6 +241,57 @@ stateDiagram-v2
 
 把这几条串起来：**dsh 很可能正是这篇论文所构想范式的一个工程验证体**——一个真实的 self-evolving agent harness，其可逆 effect / 响应式 coeffect 机制与论文形式化高度同构，且作者与代码提交者存在交集。这是**有据推断 [inferred]**，本导读在措辞上保持谨慎：论文正文并未点名 dsh，此结论建立在机制同构 + 作者链 + Conclusion 明示方向三条证据之上，而非论文的直接声明。
 
+### 3.8 与 RSI 及「可训练 / 自改进 harness」方向的关系
+
+§3.7 说 dsh「很可能是这套范式的工程验证体」，而论文 §8 又把「self-evolving agent harness（自演化 agent harness）」列为下一步验证方向——这自然引出一个当下很热的问题：**这套形式化，与「递归自我改进」（Recursive Self-Improvement，RSI）、以及「让 harness 变得可训练 / 能自改进」这条路线，到底是什么关系？** 先把外部坐标立起来，再看这项工作卡在哪个位置。
+
+**外部路线分两条正交的轴**（以下外部工作的结论一律记 [claimed]，仅作定位参照）：
+
+- **轴 A——改脚手架 / harness（代码级，不动模型权重）。** 代表作：**Darwin Gödel Machine**（DGM，arXiv:2505.22954，全称 "Darwin Godel Machine: Open-Ended Evolution of Self-Improving Agents"）——一个"迭代修改自身代码、从而也提升自己改代码的能力"的编码 agent，它**明确放弃了原始 Gödel Machine「先证明一处改动有益再采纳」的要求**（自陈"在实践中不可能"），改为**用编码基准经验性验证**（SWE-bench 20%→50%），并强调"所有实验都在 sandboxing + 人类监督下进行" [claimed]；以及 **ADAS**（arXiv:2408.08435，"Automated Design of Agentic Systems"）的 Meta Agent Search——一个 meta-agent 在不断增长的档案上**用代码编排出新 agent**，主张"手工设计的方案终将被学习到的方案取代" [claimed]。
+- **轴 B——改模型权重（RL）。** 代表作：**SEAL**（arXiv:2506.10943，"Self-Adapting Language Models"）——模型生成自己的"self-edit"（微调数据 / 优化指令），用**下游表现作为奖励的强化学习循环**训练这一过程，经监督微调落成**持久的权重更新** [claimed]。这条轴训练的是**权重**，不是 harness。
+
+**dsh / 这套范式落在哪？——它两条轴都不做「训练」，它提供的是另一样东西：一个可逆、可热插拔的基底。** 这正是最容易被误读、也最该说清楚的地方。三点可辩护的连接（均记 [inferred]，锚定报告已核实素材）：
+
+1. **「安全的自我修改」＝「可逆 effect」。** 在 dsh 里，模型挂载的动态包（`cordis_define/run/stop`）与框架插件**走同一套可逆 effect / 响应式 coeffect 演算**，`cordis_stop/undefine` 必须 await 到工具 / 监听器 / 服务 / 定时器 / effect 全部 quiescent 才算撤净（见 Ch18 §5、Ch03）。而轴 A 的 DGM / ADAS 恰恰缺这条**时间维**——它们回滚一次坏改动的办法通常是**整进程重启**（正是论文 §1.2.2 点名的痛点："每次自改写全量重启、丢进程内状态"）。可辩护的表述是：**dsh 为「改一版 → 验一版 → 撤回」这个自改进内循环，提供了组件粒度、结构性保证的回滚基底**——但仅覆盖经 `ctx.effect()` 注册的 effect（边界见 Ch03）。
+2. **「搜索 harness 配置」需要「安全回滚 + 结果确定」。** 轴 A 本质是在候选脚手架空间里试错：挂上一个候选、评估、再干净地丢弃。论文的 **Confluence（Thm.73，静止态由最终配置唯一决定）** 与 **Terminal recovery（Cor.62，退出组件贡献归零）** 恰好保证"试完能回到干净起点、且最终态不受装卸顺序影响"——这正是 harness 搜索试错—丢弃内循环所需要的性质 [inferred]。
+3. **响应式 coeffect ＝ 一个「活的、可热插拔的动作空间」。** 新工具依赖齐了自动激活、依赖撤走自动停用，无需重启（Ch18 §5）。对"在线搜索工具组合"或"对工具集做 RL"而言，这是一个**机械前提**：动作空间可以在会话中途增删而不必重建运行时 [inferred]。
+
+一张图把两轴与 dsh 的位置画清楚：
+
+<div style="background: #ffffff !important; background-color: #ffffff !important; padding: 16px; border-radius: 8px; margin: 16px 0;" bgcolor="#ffffff">
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+flowchart TB
+  subgraph EXT["自改进的两条外部轴（[claimed]）"]
+    A["轴 A · 改脚手架/harness（代码级）<br/>DGM 改自身代码 · ADAS 搜索代码定义的 agent<br/>回滚靠整进程重启、以经验验证取代证明"]
+    B["轴 B · 改权重（RL）<br/>SEAL 对 self-edit 做 RL、落成权重更新"]
+  end
+  DSH["dsh / 时空可组合范式<br/>两轴都不训练（无 reward / 无权重更新）<br/>提供可逆 + 可热插拔的运行时基底"]
+  DSH -->|"改-验-撤 可安全回滚<br/>reversible effect + Confluence/Terminal recovery"| A
+  DSH -.->|"权重训练不在其职责内（正交）"| B
+```
+
+<p>图 23-3　自改进方向的两条轴与 dsh 的定位。此图要说明的是：dsh 不是"自改进器"，而是轴 A 所需的"可安全回滚、可热插拔"基底——它把自改进试错中"改一版再撤回"那一步做成了结构性保证；对轴 B（改权重的 RL）则正交、不涉及。依据：论文 §1.2.2 / §8、Thm.73 / Cor.62，Ch18 §5，及外部工作 arXiv:2505.22954 / 2408.08435 / 2506.10943（后者仅 [claimed]）。</p>
+
+</div>
+
+**但必须把边界钉死，否则极易读成过头话**（以下每条都是防止误读的"这不是什么"）：
+
+- **dsh 不训练任何东西** [inferred]：报告与源码里**没有** RL、没有 reward、没有权重更新、没有在线学习循环。dsh 的"自我修改"是**模型可调用、opt-in、人类监督的开发工具**，不是自主的自改进循环——因此把 dsh 说成"一个 RSI 系统"或"可训练 harness"是过界的。
+- **Ch20 的「agent 写代码」是开发流程事实、不是运行时 RSI** [verified→划清]：那说的是"这套代码库主要由编码 agent 在**人设规则、人做终签**下产出"，与"运行时自我改进闭环"是两码事，不能混为一谈。
+- **"自我修改更优 / 净收益为正"未经证明** [claimed]：Ch18 明确记录该能力在真实任务上"是否更优"尚无证据，故它保持 opt-in、非默认。
+- **论文并未验证 self-evolving harness** [inferred]：它只是**动机 + 未来工作**，真正的实验是 Koishi（§5.3）。
+- **"可证明安全的自我修改"是过界表述** [inferred]：其一，可逆性只覆盖经框架注册的 effect，且"逆元确实撤销其 effect"是**作者义务、运行时并不校验**（见 Ch22 §1.7）；其二，承载动态代码的 `node:vm`**"不是安全边界"**（Ch18），模型一旦能挂载代码，其信任级别等同于"能跑 bash"。所以准确说法是"**对协作式 effect 的安全回滚**"，而非"对敌意代码的隔离"。
+
+**一句话收束**：这项工作与 RSI / 可训练 harness 的关系，不是"dsh 会自我进化"，而是——**它把「自改进」这件事最危险的一步「改了之后能不能干净地撤回」从工程自觉变成了结构性保证**。用一句更尖锐的对照：DGM 因"证明每步有益不可行"而**放弃证明、转向经验验证**；这篇论文反其道而行，不去证明"某次自改写更好"，而是证明"无论怎么改，装卸本身在逻辑上是可逆、可收敛的"——**它保证的是自改进的"可回退地基"，而非自改进的"能力增益"**。二者位于不同的轴上，互补而非替代。
+
+**补充源码索引（§3.8）**
+- 自我修改机制、`cordis_*` 工具族、`node:vm` 非安全边界、await-quiescent：Ch18「互操作与自我修改」§5（`packages/extensions/README.md`、Agent Note `2026-07-08-self-referential-cordis-toolset.md`）
+- 可逆 effect 的产品化、`cordis_run/stop`：Ch03「Spatiotemporal Composability」
+- Confluence（Thm.73）/ Terminal recovery（Cor.62）/ §1.2.2 动机 / §1.7 边界 / §8 未来方向：Ch22
+- 外部对照（均 [claimed]）：DGM arXiv:2505.22954、ADAS arXiv:2408.08435、SEAL arXiv:2506.10943
+
 ---
 
 ## 四、与相关工作的定位（据 §7 Related Work）

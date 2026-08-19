@@ -1,7 +1,7 @@
 
 # A Programming Paradigm for Spatiotemporal Composability
 
-> **作者** Yifan Shi（施逸凡）、Wei Zhang、Tianyi Cui
+> **作者** Yifan Shi、Wei Zhang、Tianyi Cui（第一作者 Yifan Shi 同挂 ¹北京大学 ²DeepSeek-AI；"Yifan Shi" 系论文所给罗马字，汉字写法无一手来源，`施逸凡` / `施一凡` 等同音写法均未证实，详见 Ch29 §二）
 > **机构** Peking University（北京大学）× DeepSeek-AI
 > **发表** 预印本 · cordiverse/paper · Draft of Aug 13 2026（获取日 2026-08-17）
 > **链接** [Preprint](https://github.com/cordiverse/paper) · [实现 Cordis](https://github.com/cordiverse/cordis)
@@ -124,6 +124,10 @@ flowchart TB
 **一句话本质**：把 effect / coeffect 这对经典对偶从编译期注解「下沉」为运行时的可逆变换与响应式依赖、统一进 first-class context $\Gamma_\infty$，再用组件演算与五条元理论把「局部可逆 + 局部响应式」证成「系统级时空可组合」，从而让动态组合的正确性从开发者纪律变为结构性保证，并以 Cordis / Koishi 落地验证。
 
 ### 1.7 这套形式化到底证明了什么、又不证明什么
+
+> **万物皆服务，万物皆可撤销。**（Everything is a service; everything is revertible.）
+>
+> 这是对这套范式最凝练的口号：**「万物皆服务」**对应把一切能力都做成经 `ctx` 解析的 service / 插件——Cordis 自述为 "A Meta-Framework of Spatiotemporal Composability"、dsh 对外主张「一切皆插件」`[verified]`（Cordis README、dsh 定位）；**「万物皆可撤销」**对应 §3.1 的 revertible effect——每个 effect 携一个左逆、由运行时 track 进 accumulator、卸载时结构性回收 `[verified]`（Def.1/3/6、Thm.15/16）。需要强调：这是**对范式的凝练口号（characterization），不是一条被证明的定理**；把它当作「绝对安全」来读会失真，它的严格边界正是下面三条 caveat。
 
 如果把这些公式的价值浓缩成一句可传播的话：**它用编程语言理论，把"组件动态装卸时、环境能否安全复原、依赖能否自洽解析"这件事，从一条要靠开发者自觉遵守的纪律，变成一条可被证明的系统性质。** 落到三点：
 

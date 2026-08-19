@@ -68,6 +68,22 @@ flowchart LR
 
 </div>
 
+### 前世今生：一条可核验的时间线
+
+把上面的同源证据摊成一条时间线，就能看清 Cordis 不是凭空出现、也不是 DeepSeek 自研的新框架，而是一段多年演进的"抽象产物"。下表每一行都标注证据级别（本地一手 = git/LICENSE/论文；外部来源另记）：
+
+| 时间 | 事件 | 证据 |
+| --- | --- | --- |
+| 约 2019 起 | **Koishi** 起步：跨平台聊天机器人框架，TypeScript + 热重载；历经四年余开发、社区插件逾 4000 个 | 插件数与"四年余"`[verified]`（论文 §5.3，`repo/paper-fulltext.txt`）；"2019 起 / Copyright © 2019-present Shigma"`[claimed]`（外部 `koishijs/koishi` README 与 npm，本地无 clone 佐证） |
+| 2021 起 | **Cordis** 版权起算年（"Copyright (c) 2021-present Shigma"），通用微内核开始从 Koishi 生态里被抽象出来 | `[verified]`（`repo/cordis/LICENSE:3`）；"抽象自 Koishi" 的因果记 `[inferred]` |
+| 2022-05-18 | Cordis 首个 git 提交（`716d079`），此后 bug-fix 提交仍挂 `koishijs/koishi` 的 issue 号（见上）——同源硬证据 | `[verified]`（`repo/cordis` git log） |
+| 2022–2026 | 四年 3 个月、550 次提交、Shigma 一人占 537（逐年 135 / 53 / 197 / 96 / 69，详见 §四）；`core` 迭代到 `4.0.0-rc.8`，README 自陈 "API is not yet stable" | `[verified]`（`repo/cordis` git log、`README.md:7`） |
+| —— | Cordis 定名为 "**A Meta-Framework of Spatiotemporal Composability**"，官方文档托管在 `deepseek-harness.github.io`（cordis-primer） | `[verified]`（`repo/cordis/README.md:5`） |
+| 2026-08-13 | Cordis 末次提交（`8cc9e33`），与论文标注的 "Draft of Aug 13 2026" **同一天**——机制成型与论文出草稿（Draft）在时间上重合 | `[verified]`（git log + 论文元信息） |
+| 2026-08 | 论文《A Programming Paradigm for Spatiotemporal Composability》把这套机制形式化；dsh 把 Cordis 以 `4.0.0-rc.7` **vendored 锁入** `vendor/`（见 Ch29 §一） | `[verified]`（论文、dsh 仓库） |
+
+一句话概括这条时间线：**Koishi（产品）→ Cordis（从产品里抽象出的通用内核）→ 论文（把内核机制形式化）→ dsh（把内核 vendored 复用）**——同一个作者、同一套"插件 + 热重载 + 依赖注入 + 可逆 effect"的主张，跨越多年被反复提炼。需要提醒的是：网上流传的"以太工坊 / Shaddoll 起源"一说本报告查证后**未能证实**，仅记 `[claimed]`（见 Ch21 §一），此处不采信；"从 Koishi 抽象出内核"的**因果先后**同样只到 `[inferred]` 级别，时间线本身（各节点日期）才是 `[verified]` 的。
+
 ## 三、九个包与内核九模块
 
 打开 `package.json` 会看到工作区（workspaces）指向 `external/*` 与 `packages/*``[verified]`（`repo/cordis/package.json:7-10`），其中 `external/` 目录实际缺席（workspaces 的 `external/*` glob 匹配为空），实体代码都在 `packages/` 下的 **9 个包**里（`ls packages/` 可复现，`[verified]`）。下表「npm 名」一列，即各包发布到 npm（Node Package Manager，Node 的包管理器与公共包仓库）时使用的名字：

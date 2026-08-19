@@ -12,6 +12,17 @@
 ## 一、核心（Core）
 
 
+> **本章导读**
+>
+> 这是一篇**理论论文**的逐节精读，公式偏多，但它要解决的是一个很具体的工程问题：**怎么让软件像插件一样，在运行中安全地装上、拔下、换新，而不用重启、不留下烂摊子。**
+>
+> 整篇论文就围绕两件事（作者叫它"两个维度"）：
+> - **时间维（temporal）＝"拔下来能干净地还原"**：一个组件运行时改过的东西（占的资源、注册的事件、写的状态），卸载时要能**完整撤销**。类比：编辑器的 Ctrl+Z，每步改动都记一张"怎么撤"的纸条，撤销就反着执行。论文管这套叫 **effect（可逆副作用）**。
+> - **空间维（spatial）＝"谁依赖谁能自动接线"**：组件能声明"我需要 A、B 才能开工"，系统在运行时自动帮它找到、接上，依赖一变就自动调整。类比：后厨厨师报"我要炉子和食材"，齐了自动上工、缺了自动下工。论文管这套叫 **coeffect（对环境的依赖）**。
+> - 最后一步最妙：**用"两个组件依赖的东西是否不同"（空间）来判断"它们能不能随便并发、任意顺序装卸"（时间）**——这就是标题 "Spatiotemporal Composability（时空可组合）" 的来历。
+>
+> **阅读建议**：数学最密集的是 §2.3（Method）。那里每个小节（2.3.1～2.3.4）开头都附了一段"**直觉与类比**"——可先读这段类比加每节的表格解读建立直觉，把公式当作"同一件事的严格版"，需要时再回头逐行推敲。全文公式均保留原样并已与原文逐条核对，可作为可信参照。
+
 ### 1.1 一句话概括
 
 把 effect / coeffect 从编译期静态注解「下沉」为运行时可逆机制，为动态组合建立 Spatiotemporal Composability 的形式基础，并落地为 Cordis。
@@ -231,6 +242,18 @@ flowchart TB
 
 #### 2.3.1 Revertible Effects（可逆 effect，§3.1）
 
+> **直觉与类比**
+>
+> 想象你在用编辑器打字，每敲一个字，系统就在旁边悄悄记一张纸条：「刚才那个字，撤销时删掉它」。按 Ctrl+Z，就是把这些纸条**反着**执行一遍——最后一张先撕、第一张后撕。这一节讲的「可逆 effect」就是把这件事做成规矩：**每做一次改动（effect），都必须随手交出一张"怎么撤销我"的纸条（逆元）**；系统把纸条按顺序摞成一摞（accumulator，累积逆元），要回滚时从上往下逐张执行。
+>
+> 下面的形式化，就是把上面这句话**写严格、并证明它必然成立**：
+> - 把「一次改动」抽象成「对当前世界 $\Gamma$ 的一个变换 $f:\Gamma\to\Gamma$」；把「改动 + 纸条」打包成一对 $(f,g)$，$g$ 是撤销。
+> - 两次改动接着做，纸条要**反序**摞（后做的先撤）——这就是 Def.1 那个看着别扭的 $(f_1,g_1)\circ(f_2,g_2)=(f_1\circ f_2,\;g_2\circ g_1)$，正向同序、逆元反序，正对应 Ctrl+Z 的"后进先出"。
+> - track（Def.3）＝"做改动的同时把纸条摞上去"，recover（Def.6）＝"把整摞纸条一次性执行、回到起点"。Thm.5/Thm.7 证明的就是：**先记录再回滚，和直接回滚，结果一模一样**——于是"卸载一个组件能干净地还原环境"从"程序员要自己记得写对"升级成了"系统结构上必然成立"。
+> - 一个务实的取舍：只要求 $g\circ f=\mathrm{id}$（撤销能从当前态回到起点），不要求 $f\circ g=\mathrm{id}$（现实里很多改动没法百分百原样复原，比如释放的内存布局）。这叫**只要左逆**，门槛更低、够用。
+>
+> 循着「打字—记纸条—反序撤销」这一画面，下面每个公式都能对号入座。
+
 <table>
 <colgroup><col width="55%"><col width="45%"></colgroup>
 <thead><tr><th>原文要点（提炼式中译）</th><th>解读 / 评论</th></tr></thead>
@@ -245,7 +268,7 @@ $$(f_1,g_1)\circ(f_2,g_2):=(f_1\circ f_2,\; g_2\circ g_1)$$
 
 （twisted composition，Def.1）：左操作数后作用，逆元以相反顺序累积。
 
-**effect context（Def.2）**：$\partial\Gamma:=\Gamma\times\mathfrak F_\Gamma$，一个状态是 $(\gamma,\varphi)$，其中 $\varphi$ 是**累积逆元**（accumulator）。
+**effect context（Def.2）**：$\partial\Gamma:=\Gamma\times(\Gamma\to\Gamma)$，一个状态是 $(\gamma,\varphi)$，其中 $\varphi$ 是**累积逆元**（accumulator）。
 
 **track（Def.3）**：$\mathrm{track}_\Gamma(f,g)=(\gamma,\varphi)\mapsto(f(\gamma),\varphi\circ g)$——用 $f$ 变换 $\gamma$、把逆元 $g$ 复合进 $\varphi$。Thm.5 证明 $\mathrm{track}_\Gamma$ 是从成对变换幺半群到 $\partial\Gamma\to\partial\Gamma$ 的**幺半群同态**（单位映单位、复合映复合）。配套 recover（Def.6）把 tracked effect 一路带回初始 context（Thm.7）。§3.1.2 进一步放宽为「逆元由 caller 在应用点给出」的 effect function $\mathfrak E_\Gamma$，用 $\diamond$ 复合（Def.9），$\mathrm{effect}_\Gamma$ 把它 lift 到 $\partial\Gamma$（Def.12）。§3.1.3 用 independence 保证互不干扰的 effect 可任意交错。
 
@@ -271,7 +294,7 @@ $$(f_1,g_1)\circ(f_2,g_2):=(f_1\circ f_2,\; g_2\circ g_1)$$
 | 级 | 类型/构造 | 补上的漏洞 | 关键定理 |
 | --- | --- | --- | --- |
 | 0 | $\Gamma\to\Gamma$，`∘` 幺半群 | 把副作用变成代数对象 | 幺半群三公理 |
-| 1 | track/recover 于 $\partial\Gamma=\Gamma\times\mathfrak F_\Gamma$ | 逆元先验给定、可追踪可恢复 | Thm.5（同态）、Thm.7（精确恢复） |
+| 1 | track/recover 于 $\partial\Gamma=\Gamma\times(\Gamma\to\Gamma)$ | 逆元先验给定、可追踪可恢复 | Thm.5（同态）、Thm.7（精确恢复） |
 | 2 | $\mathfrak E_\Gamma/\mathfrak E^*_\Gamma$、$\diamond$、$\mathrm{effect}$ | 逆元改由 caller 在应用点给、可选择性撤销 | Thm.10/11/13/15 |
 | 3 | independence（Def.19） | 跨组件交错撤销、任意序 | Thm.20、Cor.21 |
 
@@ -283,7 +306,7 @@ $$(f_1,g_1)\circ(f_2,g_2):=(f_1\circ f_2,\; g_2\circ g_1)\quad(\text{Def.1，twi
 
 左操作数后作用、逆元以相反顺序累积，使 $(\Gamma\to\Gamma)\times(\Gamma\to\Gamma)$ 成为**twisted composition monoid** $\mathfrak T_\Gamma$（正向 monoid 与其 opposite 的积，单位 $(\mathrm{id}_\Gamma,\mathrm{id}_\Gamma)$）。为把逆元"存进 context 自己"，定义 **effect context**（Def.2）
 
-$$\partial\Gamma:=\Gamma\times\mathfrak F_\Gamma,\qquad \mathfrak F_\Gamma:=\Gamma\to\Gamma$$
+$$\partial\Gamma:=\Gamma\times(\Gamma\to\Gamma)$$
 
 一个状态是 pair $(\gamma,\varphi)$：$\gamma$ 是当前 context，$\varphi$ 是 **accumulator**（迄今所有逆元的复合，也就是"把 context 拉回初态"的那个函数）；初态是 $(\gamma_0,\mathrm{id}_\Gamma)$。论文还记 $\partial^2\Gamma=\partial\Gamma\times(\partial\Gamma\to\partial\Gamma)$，一路往上叠成塔。**track**（Def.3）$\mathrm{track}_\Gamma(f,g)=(\gamma,\varphi)\mapsto(f(\gamma),\varphi\circ g)$ 把一次 effect 记进 context；**recover**（Def.6）$\mathrm{recover}_\Gamma=(\gamma,\varphi)\mapsto(\varphi(\gamma),\mathrm{id}_\Gamma)$ 一次性回滚并复位 accumulator。两条核心定理：**Thm.5** $\mathrm{track}_\Gamma$ 是从 $\mathfrak T_\Gamma$ 到 $\partial\Gamma\to\partial\Gamma$ 的**幺半群同态**（单位映单位、复合映复合）；**Thm.7** 只要 $g(f(\gamma))=\gamma$，就有 $\mathrm{recover}_\Gamma(\mathrm{track}_\Gamma(f,g)(\gamma,\varphi))=\mathrm{recover}_\Gamma(\gamma,\varphi)$——"先追踪再恢复"与"直接恢复"等价。论文把 $\varphi(\gamma)=\gamma_0$ 命名为一个状态的 **soundness invariant**（健全性不变式）。
 
@@ -359,6 +382,24 @@ $e(\gamma)$ 返回"新 context $\delta$ + 本次施加处的逆元 $g$"；strict
 对比升级到 $\mathfrak E^*_\Gamma$（Def.8）：若逆元要到施加时才知道（如注册返回的句柄决定怎么注销），track 的「$g$ 先验定死」不够，改用 $e(\gamma)=(\delta,g)$ 在应用点返回逆元、用 $\diamond$（Def.9）复合；**Thm.15** 保证提升后仍精确恢复（$g'(\Delta)=(\gamma,\varphi\circ g\circ f)$）。
 
 #### 2.3.2 Reactive Coeffects（响应式 coeffect，§3.2）
+
+> **直觉与类比**
+>
+> 如果说 2.3.1 讲的是「一个组件怎么**改**环境、又怎么把改动**撤**回去」，这一节讲的就是「一个组件怎么**依赖**环境」。打个比方：后厨的每位厨师上工前都得先声明「我要有炉子、有食材才能开炒」——这份清单就是 **coeffect specification（依赖声明）**。厨房里有一块公共白板（**coeffect context $\Sigma$**，本质是一张「名字 → 东西」的表），谁提供了炉子、谁提供了食材，都写在白板上。
+>
+> "响应式"三个字是关键：系统会**盯着这块白板**，每次白板一变就对照每位厨师的清单问一句「你要的都齐了吗」——
+> - 从「没齐」变「齐了」→ 喊他**上工**（activating，触发这个组件的 effect，并按 2.3.1 记好撤销纸条）；
+> - 从「齐了」变「没齐」（比如炉子被搬走）→ 喊他**下工**（deactivating，执行撤销纸条把他的改动回滚）；
+> - 其余情况不动（neutral）。
+>
+> 这就是 Def.26 那个三态 $\mathrm{notify}$ 公式的全部含义——**依赖满足与否的"变化"，直接驱动上工/下工**，不用组件自己去 new 出依赖、也不用手写一堆回调。
+>
+> 还有三个要点，各对应一段公式：
+> - **写依赖这件事本身也是可逆的**：`set(k,v)`（往白板上添一样东西）的类型恰好就是 2.3.1 的可逆 effect $\mathfrak E^*$——所以"添了又撤"天生带撤销纸条。这是 coeffect 和 effect 两套机制"焊在一起"的接口。
+> - **isolation（$\Sigma^{iso}$）**：让同一个名字在不同"房间"里指向不同实现——多租户、测试替身、沙箱都是它。好比"炉子"这个词在中餐间和西餐间指的是不同的灶。
+> - **interception（$\Sigma^{inter}$）**：在**不改组件代码**的前提下，给"它怎么用这个依赖"外挂一层可审查的规矩（限流、鉴权）。好比经理在不改菜谱的情况下规定"这道菜今天限量供应"。
+>
+> 循着「厨师报清单 + 系统盯白板 + 齐了上工/缺了下工」这一画面，下面的偏映射、满足谓词、三态分类便都是它的严格版。
 
 <table>
 <colgroup><col width="55%"><col width="45%"></colgroup>
@@ -464,6 +505,20 @@ $(\iota,\sigma)$：$\iota$ 是 context 携带的元数据（默认空 $\epsilon_
 
 #### 2.3.3 统一 context 与 observational equivalence（§3.3）
 
+> **直觉与类比**
+>
+> 这一节把前两节"焊"成一体，是全文最抽象、也最点题的一段。就两件事：
+>
+> **第一件：造一个"万能上下文"$\Gamma_\infty$。** 前面 effect（改环境）和 coeffect（依赖环境）各用各的 context，现在要一个对象同时装下三样东西：〔当前状态〕+〔一摞撤销纸条〕+〔依赖白板〕。麻烦在于，这个对象里还得能装下"能改它自己的函数"——这就像"一个盒子里要能放进'搬动这个盒子'的说明书"，是自我指涉的。数学上用**递归类型（$\mu$ 不动点）**把这件自指的事说圆：$\Gamma_\infty:=\mu\Gamma.\ \Gamma\times(\Gamma\to\Gamma)\times\Sigma$，读作"$\Gamma_\infty$ 正好等于〔它自己 + 一个作用在它自己上的变换 + 依赖表〕"。它对应的就是实现里那个贯穿全场的 `ctx`。
+>
+> **第二件：把"相等"放宽成"看不出区别"（observational equivalence，观察等价）。** 2.3.1 说撤销后能回到"一模一样"的状态，但现实办不到——释放的内存布局变了、新分配的地址号变了。于是论文把所有等式都读到"**没有观察者能区分**"这个更宽松的意义下。正文用了个好比方：两本厚薄、排版都不同的字典，只要你查**任何**一个词得到的释义都相同，使用者就无从分辨、可以当作"相等"。判断的是"每次能观察到的结果一不一致"，而不是"内部逐字节是否相同"。
+>
+> **点题的一句**：怎么判断两个 effect 能否安全地交错、并发、任意顺序卸载？答案是——**看它们触及的依赖"键"是否不同、或是否可交换**。
+> - 一个插件注册路由 `/a`、另一个注册 `/b`，碰的是不同的键 ⇒ 天然独立（Thm.40）⇒ 装卸顺序随便、可并发。
+> - 但两个插件都往"中间件链"这**同一个有序位置**里插，谁先谁后结果就不同 ⇒ 不独立 ⇒ 顺序必须由别处强加。
+>
+> 也就是**用"空间维"（依赖关系）的可观察等价，去解锁"时间维"（副作用）的独立性**——这正是论文标题 "Spatiotemporal Composability（时空可组合）" 的由来。下面的 $\mu$ 不动点、$\simeq$ 关系、test/indistinguishability、Thm.40/42，都是把这两件事写严格。
+
 <table>
 <colgroup><col width="55%"><col width="45%"></colgroup>
 <thead><tr><th>原文要点（提炼式中译）</th><th>解读 / 评论</th></tr></thead>
@@ -544,6 +599,17 @@ $$\sigma\simeq\sigma':=\mathrm{dom}(\sigma)=\mathrm{dom}(\sigma')\wedge\forall k
 - **Thm.42（公共键 commutative ⇒ 独立）**：$e_1,e_2\in\mathfrak E_\mathcal A$，只要它们共同触及的每个键都 commutative（Def.39），则 $e_1,e_2$ independent（Def.19）。这把 §3.1.3 悬着的独立性假设兑现：组件 effect function 是 coeffect-mediated 的、independence 传给沿 coeffect 的 lift ⇒ 整个组件系统的 temporal composability。这就是全文命名由来——**用空间维（键是否不同/可交换）的可观测等价解锁时间维（effect）的独立性**。
 
 #### 2.3.4 动态组合演算（A Calculus of Dynamic Composition，§4）
+
+> **直觉与类比**
+>
+> 前面三节都只管**一个**组件自己的事（自己的改动能撤、自己的依赖能等）。这一节把它推广到**一整个系统里许多组件相互装卸**，办法是给每个组件配一台**生命周期状态机**。
+>
+> - **component 与 fiber**：component 是"图纸"（声明我读什么 $d$、提供什么 $p$、激活时做什么 $e$）；fiber 是照图纸造出来的"一台运行中的实例"，带着自己的生命周期状态（就像同一张简历投出去 = 一个人，入职到不同公司 = 多个"在职实例"）。fiber 那个七元组 $\langle d,p,e,\pi,\sigma,\tau,\theta\rangle$ 逐字段对应实现里的 `fiber`。
+> - **两张图是读懂 §4 的钥匙**：**图 1** 是"开关两态"视角——Inactive（关）⇄ Active（开）；**图 2** 把"开机/关机"这两个动作**摊开**成可以一步步走、还能中途掉头的过程，多出两个"进行中"的态：Reloading（正在装）、Unloading（正在卸）。为什么要摊开？因为真实的装卸不是一瞬间完成的原子动作，中间要处理**迭代**（effect 一步步产生）、**异步**（等 teardown 跑完）、**失败**（半路出错要掉头去卸载）。
+> - **Table 1 怎么读**：把图 2 的每条箭头翻译成两件事——"往这个组件的档案里改哪几个字段"（末列 control fields）和"对世界施加哪个变换 $\Psi_t$"。其中最关键的一行是 L-Unload：它施加的变换 $\Psi_t=g$，正是"把这个组件那摞撤销纸条一次性反着执行"——2.3.1 的可逆 effect 在这里落地成一条状态转移。
+> - **那一串元理论定理在证明什么**：无非是"这台状态机不会出乱子"。Confluence（Thm.73）——不管这些装卸动作以什么顺序到达，系统最后落到**同一个**稳定状态；Progress（Thm.66）——只要依赖关系不成环，总能往前推进（这也解释了 §6.5 为什么要专门讨论循环依赖）；Terminal recovery（Cor.62）——一个退出的组件对世界的净影响**归零**。
+>
+> 归结成一句：**热更新一个插件 = 关机（跑逆元回滚它的改动）→ 换新版 → 开机（重放）**，期间依赖它的组件会被"撤离守卫"（withdrawal guard）拦住、等它先走完。下面的规则表与定理，正是把这套流程做成一台可证明不出错的状态机。
 
 <table>
 <colgroup><col width="55%"><col width="45%"></colgroup>
@@ -722,7 +788,7 @@ $$\mathfrak E^{iter}_\Gamma:=\mu\mathfrak I.\ \Gamma\to\Gamma\times(\Gamma\to\Ga
 
 §4.4 把 §4.3 的十条规则读出两维可组合的**全局形态**（一个 fiber 的保证在其他 fiber 任意穿插下仍成立），并加上"只有整个系统才谈得上"的两条：总能到达目标配置、且该配置正是静态装配会得到的。所有性质都是对**一串步骤**的性质：步骤按 $t$ 索引、$\gamma_t$ 是前 $t$ 步到达的状态、$\mathrm{step}_t=r(n)$ 记第 $t$ 步施加的规则 $r$ 与作用名 $n$；一个 fiber 的 **episode** $[b,u]$ 是 $\mathrm{installed}^t_n$ 持续为真的极大区间。两个约定把 §3.3.2 带进来：状态间等式都读到 ≃（Def.33 在此扩为"$\sigma_\gamma\simeq$ + registry 域相等 + 每个 fiber 每个 control field ≃"），且另有 $\approx$（两状态在除 control fields 外都一致）用于比较 effect 的贡献。**Table 1** 正是这十条规则读成"对 fiber $n$ 字段的写入"（$\Psi_t$ 为该步施加于状态的变换、末列为被改的 control 字段；L-Unload 那行 $\Psi_t=g$ 即"用累积逆元一次性回滚"）。
 
-**定理 1 —— Preservation（保型，Thm.59）。** *若 $F_t$ well-formed，则无论第 $t$ 步施加哪条规则，$F_{t+1}$ 亦 well-formed。* well-formedness（Def.58）是对 registry 的四条件（parent 指针成树、provision 单源、committed view 只解析到 $\mathsf{Active}$ provider、每个 installed fiber 的声明键都有 provider 等）。证明的**单一支点**：每个 outcome（含失败）都只经 **L-Unload** 这唯一出口离开转移态、且 L-Unload 是唯一施加 accumulator 者。含义：热插拔的任何合法步骤都不会把系统带出"结构良好"的状态空间——这是其余四条定理的地基。
+**定理 1 —— Preservation（保型，Thm.59）。** *若 $F_t$ well-formed，则无论第 $t$ 步施加哪条规则，$F_{t+1}$ 亦 well-formed。* well-formedness（Def.58）是对 registry 的四条件（parent 指针成树、provision 单源、committed view 只解析到 **installed**（三态之一、非 $\mathsf{Inactive}$）provider、每个 installed fiber 的声明键都有 provider 等）。证明的**单一支点**：每个 outcome（含失败）都只经 **L-Unload** 这唯一出口离开转移态、且 L-Unload 是唯一施加 accumulator 者。含义：热插拔的任何合法步骤都不会把系统带出"结构良好"的状态空间——这是其余四条定理的地基。
 
 **定理 2 —— Temporal Composability（时间可组合）= Recovery exactness（Thm.61）+ Terminal recovery（Cor.62）。** 局部时间可组合（§3.1）只就单组件自身的 effect 而言；全局形态要求"一个组件的逆元在别的组件 effect 交错其间时仍精确撤销自己那份"。**Thm.61（Recovery exactness）**：*设步骤序列 pairwise independent，一个 episode 内跑完的迭代，其 accumulator 精确恢复该 episode 开始时的状态（读到 $\approx$）。* 前提 **pairwise independence（Def.60）** 由 §3.3.2 兑现——每个 effect 都是某个 commutative 键上的操作时，由这些操作建的任两 effect function 独立（Thm.42），iterator 情形无需新东西。**Cor.62（Terminal recovery，退出 fiber 的贡献归零）**：*pairwise independent 下，一个退出的 fiber（其 episode 以 L-Unload 收尾）对状态的贡献在 $\approx$ 意义下为零。* 这条是 §6.1 边界内"完整恢复"、以及 loader"重建一个 entry 不扰动周围 fiber"的形式根据。
 
@@ -813,7 +879,7 @@ $$\mathfrak E^{iter}_\Gamma:=\mu\mathfrak I.\ \Gamma\to\Gamma\times(\Gamma\to\Ga
 - **Def.51（effect iterator，式 47）**：$\mathfrak E^{iter}_\Gamma:=\mu\mathfrak I.\ \Gamma\to\Gamma\times(\Gamma\to\Gamma)\times\mathsf{Maybe}(\mathfrak I)$，每步 yield $(\delta,g,o)$（新 context、逆元、续延：$\mathsf{Nothing}$ 终止 / $\mathsf{Just}(i)$ 下一次）；witnessed 版 $\mathfrak E^{iter*}_\Gamma$ 要求每步 $g$ respect ≃ 且 $g(\delta)\simeq\gamma$。
 - **Def.52（effect iterator transformation）**：$\mathrm{effect}^{iter}_\Gamma$ 递归地把每步逆元按施加序 $\varphi\circ g_1\circ\cdots\circ g_k$ 组进 accumulator，故施加时天然 LIFO 恢复；$\mathsf{Maybe}(\mathfrak E^{iter})$ 续延在两次迭代间提供边界，使 iterator 成为 **reified delimited continuation**（对应主流语言 `yield` 暴露的 generator）。
 - **Def.53（步索引 / episode）**：步按 $t$ 索引，$\gamma_t$ 是前 $t$ 步到达的状态，$\mathrm{step}_t=r(n)$ 记第 $t$ 步施加的规则 $r$ 与作用名 $n$；每步 $\gamma_{t+1}=\mathrm{edit}_t(\Psi_t(\gamma_t))$ 拆成状态变换 $\Psi_t$ 与字段编辑 $\mathrm{edit}_t$。一个 fiber 的 **episode** $[b,u]$ 是 $\mathrm{installed}^t_n$ 持续为真的极大区间。
-- **Def.58（well-formed registry）**：$F$ well-formed 当对所有 $m,n,k$：parent 指针成树、provision 单源、committed view 只解析到 $\mathsf{Active}$ provider、每个 installed fiber 的声明键都有 provider 等四条件。
+- **Def.58（well-formed registry）**：$F$ well-formed 当对所有 $m,n,k$：parent 指针成树、provision 单源、committed view 只解析到 **installed**（三态之一、非 $\mathsf{Inactive}$）provider、每个 installed fiber 的声明键都有 provider 等四条件。
 - **Def.60（pairwise independence）**：为 iterator 情形定义的两两独立（由 §3.3.2 的 Thm.42 兑现：每个 effect 都是某 commutative 键上操作时，任两建出的 effect function 独立）。
 - **Def.65（precedence，式）**：$n\prec m:=p_n\cap d_m\ne\varnothing$（$n$ 可提供 $m$ 声明的键）。Thm.66/73 均建立在 **$\prec$ 无环**上（$n\prec n$ 出现于「声明并自提供同一键」的组件）。
 - **Def.67（support set）**：只读 $\tau,\pi,d,p$（entry 恰给这四者，故 entry 可作忠实规格）。**Def.69（total on provision）**：一次跑完的激活装上组件声明的每个键。**Def.74（entry）**：见 §2.4 声明式配置——六字段 `id`/`url`/`isolate`/`intercept`/`config`/`disabled`。
@@ -896,7 +962,7 @@ L-Unload ───────────────────────�
 
 Cordis 是**Spatiotemporal Composability 的 meta-framework**：不针对具体领域（不像 web routing 路由、ORM（Object-Relational Mapping，对象关系映射）、UI（user interface，用户界面）那样解决某个具体问题），唯一职责是提供通用动态组合语义。实现分三层：（1）**core library（§5.1）** 直接实现 effect 与 coeffect 系统；（2）**component loader（§5.2）** 在 core 之上加 configuration reconciliation 与 hot module replacement；（3）应用框架（如 Koishi）在前两层上建领域功能。
 
-**core library（§5.1）**：Table 2 给出理论构件到运行时的对应（转写见本报告 §5.2）。`ctx` 即一等 context（$\Gamma_\infty$），`ctx.effect(callback)` 实现 $\mathrm{effect}_\Gamma$，回调返回/yield 逆元；`ctx.get/set/isolate/intercept` 对应 coeffect 操作；符号键 `ctx[@@store]/[@@isolate]/[@@intercept]` 对应 $\Sigma/\Sigma^{iso}/\Sigma^{inter}$。**Algorithm 1（Effect tracking）** 展示 `ctx.effect` 的构造：迭代执行回调、把每步 yield 的逆元以 $f\circ g$ 方式组进 disposer，对应 §4.3.2 的 L-Begin/L-Iter/L-Finish 迭代循环。component lifecycle（§5.1.3）用 LOADING/FAILED 等状态实现 §4 的生命周期机。
+**core library（§5.1）**：Table 2 给出理论构件到运行时的对应（转写见本报告 §5.2）。`ctx` 即一等 context（$\Gamma_\infty$），`ctx.effect(callback)` 实现 $\mathrm{effect}_\Gamma$，回调返回/yield 逆元；`ctx.get/set/isolate/intercept` 对应 coeffect 操作；符号键 `ctx[@@store]/[@@isolate]/[@@intercept]` 对应 $\Sigma/\Sigma^{iso}/\Sigma^{inter}$。**Algorithm 1（Effect tracking）** 展示 `ctx.effect` 的构造：迭代执行回调、把每步 yield 的逆元按 $g\circ h$ 前置累积进 disposer（新逆元 $h$ 组在里层、dispose 时先执行，即 LIFO），对应 §4.3.2 的 L-Begin/L-Iter/L-Finish 迭代循环。component lifecycle（§5.1.3）用 LOADING/FAILED 等状态实现 §4 的生命周期机。
 
 **component loader（§5.2）**：declarative configuration（§5.2.1）把「应有哪些组件、什么配置」声明出来，loader 做 config reconciliation；**HMR（§5.2.2）** 把可逆 effect 模式用到模块层——文件变更时，旧 fiber 的 tracked effect 被反转、新模块实例化的 fiber 重装，**无需开发者标注 acceptance boundary**（对比 Webpack/Vite HMR）。HMR 引擎三阶段，收尾是 Algorithm 10「Transactional module reload」。
 
@@ -972,7 +1038,7 @@ HMR 三阶段一览：
 
 论文把实现细节以 Algorithm 1–10 内嵌在 §5，逐行伪代码非常干净。下面逐一完整转写（保留原始行号），每段配一句作用说明。这十段是「理论↔实现逐行对应」主张的直接证据，读源码时可对照。
 
-**Algorithm 1 — Effect tracking（§5.1.1, p.56）** — `ctx.effect` 的运行时构造：`execute` 把回调当 effect iterator 驱动，每步 yield 的逆元以 $f\circ g$ 前置累积（故 dispose 时 LIFO）；`ctx.effect` 再加自我 dispose（`armed` 至多触发一次）与父复合。它是 $\mathrm{effect}^{iter}_\Gamma$（Def.52）的落地。
+**Algorithm 1 — Effect tracking（§5.1.1, p.56）** — `ctx.effect` 的运行时构造：`execute` 把回调当 effect iterator 驱动，每步 yield 的逆元按 $g\circ h$ 前置累积（新逆元 $h$ 组在里层，故 dispose 时 LIFO）；`ctx.effect` 再加自我 dispose（`armed` 至多触发一次）与父复合。它是 $\mathrm{effect}^{iter}_\Gamma$（Def.52）的落地。
 
 ```text
 Algorithm 1  Effect tracking
@@ -1628,7 +1694,7 @@ _导读_：两条 foundational 簇（可逆 effect、响应式 coeffect）分别
 
 ### A.1 Algorithm 1 — Effect tracking（§5.1，effect 追踪的构造）
 
-`ctx.effect` 的运行时构造：迭代执行 effect 回调，把每步 yield 的逆元以 $f\circ g$ 顺序组进 disposer，使 dispose 时按 LIFO 施加逆元。它是 $\mathrm{effect}^{iter}_\Gamma$（Def.52）的实现，对应 §4.3.2 生命周期规则中的 L-Begin / L-Iter / L-Finish 迭代循环（见本报告 §5.2 Table 2 末段对应）。需要逐行伪代码者见论文 §5.1.1。
+`ctx.effect` 的运行时构造：迭代执行 effect 回调，把每步 yield 的逆元按 $g\circ h$ 前置累积进 disposer（新逆元 $h$ 组在里层），使 dispose 时按 LIFO 施加逆元。它是 $\mathrm{effect}^{iter}_\Gamma$（Def.52）的实现，对应 §4.3.2 生命周期规则中的 L-Begin / L-Iter / L-Finish 迭代循环（见本报告 §5.2 Table 2 末段对应）。需要逐行伪代码者见论文 §5.1.1。
 
 ### A.2 Algorithm 10 — Transactional module reload（§5.2.2，事务式模块重载）
 
@@ -1664,9 +1730,9 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | 记号 | 读法 |
 | --- | --- |
 | $\Gamma$、$\gamma$ | context 类型 / 一个 context 状态 |
-| $\mathfrak F_\Gamma:=\Gamma\to\Gamma$ | context 变换（effect 的底层） |
+| $\Gamma\to\Gamma$ | context 变换（effect 底层；即 accumulator/逆元所在空间） |
 | $(f,g)$ | 正向变换 + 其**左逆**（$g\circ f=\mathrm{id}$，不要求 $f\circ g$） |
-| $\partial\Gamma:=\Gamma\times\mathfrak F_\Gamma$，$(\gamma,\varphi)$ | effect context；$\varphi$=累积逆元 accumulator |
+| $\partial\Gamma:=\Gamma\times(\Gamma\to\Gamma)$，$(\gamma,\varphi)$ | effect context；$\varphi$=累积逆元 accumulator |
 | $\mathfrak T_\Gamma$，`∘` | twisted composition monoid / pair 复合（Def.1） |
 | $\mathfrak E_\Gamma$、$\mathfrak E^*_\Gamma$ | effect function / 带 witness 的严格版 |
 | $\diamond$ | effect composition（Def.9，effect function 层复合） |
@@ -1930,7 +1996,7 @@ Preservation（Thm.59）、Recovery exactness（Thm.61）、Terminal recovery（
 | --- | --- | --- | --- | --- | --- |
 | F1 | effect $f:\Gamma\to\Gamma\times(\Gamma\to\Gamma)$ | §2.3.1 | §3.1（effect 建模） | ✅ 一致 | 保留 |
 | F2 | $(f_1,g_1)\diamond(f_2,g_2):=(f_1\circ f_2,g_2\circ g_1)$ | §2.3.1 | Def.1（twisted composition，式 4） | ✅ 一致 | 保留 |
-| F3 | $\partial\Gamma:=\Gamma\times\mathfrak F_\Gamma$，状态 $(\gamma,\varphi)$，φ=累积逆元 | §2.3.1 | Def.2（effect context） | ✅ 一致 | 保留 |
+| F3 | $\partial\Gamma:=\Gamma\times(\Gamma\to\Gamma)$，状态 $(\gamma,\varphi)$，φ=累积逆元 | §2.3.1 | Def.2（effect context） | ✅ 一致 | 保留 |
 | F4 | $\mathrm{track}_\Gamma(f,g)=(\gamma,\varphi)\mapsto(f(\gamma),\varphi\circ g)$，幺半群同态 | §2.3.1 | Def.3 + Thm.5 | ✅ 一致 | 保留 |
 | F5 | $\Sigma:=(k\!:\!K)\rightharpoonup\mathcal V_k$ | §2.3.2 | Def.22（coeffect context） | ✅ 一致 | 保留 |
 | F6 | $\sigma\vDash d:=\forall k\in d.\,k\in\mathrm{dom}(\sigma)$ | §2.3.2 | Def.25（satisfaction） | ✅ 一致 | 保留 |

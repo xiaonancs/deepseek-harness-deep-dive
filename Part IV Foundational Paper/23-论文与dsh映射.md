@@ -168,8 +168,8 @@ stateDiagram-v2
     RELOAD --> ACTIVE: 跑完再响应新目标
     ACTIVE --> UNLOAD: 目标=卸载
     UNLOAD --> INACTIVE: 跑完再响应新目标
-    RELOAD --> RELOAD: 惯性态: 新目标先记账
-    UNLOAD --> UNLOAD: 惯性态: 新目标先记账
+    RELOAD --> RELOAD: 惯性态·新目标先记账
+    UNLOAD --> UNLOAD: 惯性态·新目标先记账
 ```
 
 </div>

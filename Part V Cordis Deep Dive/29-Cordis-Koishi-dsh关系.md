@@ -174,7 +174,7 @@ flowchart TB
 
 一句话收束整个 Part V：Cordis 给了 `dsh` 一块经得起审计的主板，论文给了这块主板一套形式化的说明书，而 `dsh` 则在主板上焊出了一台专门跑 agent、还能改造自己的机器。三者同宗、同人、同一套文档基建——理解了这层「聊天框架抽出内核、内核被论文形式化、内核又被 agent 外壳采用」的血缘，你对 DeepSeek Harness 的认识，才算真正落到了地基上。
 
-> 🔗 **延伸对读**：想把这块「主板」本身吃透，见独立姊妹报告《[Cordis 源码深度解析](../../cordis-source-analysis/README.md)》——它以 Cordis 最新基线（**rc.9 / `00278924`**）对 Context、Reflect、Fiber、可逆 effect、事件、Loader/HMR、周边包与竞品对比逐机制取证，并在其 [Ch15](../../cordis-source-analysis/Part%20IV%20Comparison%20and%20Relations/15-三者关系与dsh握手.md) 与本报告双向握手、给出两报告逐章对读映射。本 Part V 侧重 Cordis 如何作为 dsh 底座被消费，二者互补；因两报告基线不同（本篇 rc.7/rc.8、姊妹报告 rc.9），`文件:行号` 不可互引。
+> 🔗 **延伸对读**：想把这块「主板」本身吃透，见独立姊妹报告《[Cordis 源码深度解析](https://github.com/xiaonancs/cordis-source-analysis/blob/main/README.md)》——它以 Cordis 最新基线（**rc.9 / `00278924`**）对 Context、Reflect、Fiber、可逆 effect、事件、Loader/HMR、周边包与竞品对比逐机制取证，并在其 [Ch15](https://github.com/xiaonancs/cordis-source-analysis/blob/main/Part%20IV%20Comparison%20and%20Relations/15-三者关系与dsh握手.md) 与本报告双向握手、给出两报告逐章对读映射。本 Part V 侧重 Cordis 如何作为 dsh 底座被消费，二者互补；因两报告基线不同（本篇 rc.7/rc.8、姊妹报告 rc.9），`文件:行号` 不可互引。
 
 ## 源码索引
 

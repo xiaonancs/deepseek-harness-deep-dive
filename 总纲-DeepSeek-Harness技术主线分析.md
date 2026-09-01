@@ -28,7 +28,7 @@
 - **Part II 源码剖析**（Ch05–18）：主体。沿"回合流→会话→提示词→工具→模型→能力接缝→各能力域→远程/互操作/自我修改"这条从里到外的线索逐层深入，每章七维分析 + 承重判断（取舍与根因直接写进正文）+ ≥4 图。
 - **Part III 对比与元**（Ch19–21）：跳出源码，从更高处看它——生态里的位置（竞品对比）、元层面（AI 自举开发方法论 + 公司理念映射），以及对参考底座 Cordis 的深度对比。
 - **Part IV 论文研究**（Ch22–23）：支撑 dsh 的底座论文《A Programming Paradigm for Spatiotemporal Composability》（北大 × DeepSeek-AI）的逐节精读，以及论文范式与 dsh 源码的逐条映射。
-- **Part V Cordis 深度调研**（Ch24–29）：对底座框架 cordiverse/cordis 单独跑一遍源码深度解析，并厘清 Cordis · Koishi · dsh 三者关系。对 Cordis 本体的完整逐机制解析另见姊妹报告《[Cordis 源码深度解析](../cordis-source-analysis/README.md)》（基线 rc.9 / `00278924`；本 Part V 为更早的 rc.7/rc.8 快照，行号不可互引）。
+- **Part V Cordis 深度调研**（Ch24–29）：对底座框架 cordiverse/cordis 单独跑一遍源码深度解析，并厘清 Cordis · Koishi · dsh 三者关系。对 Cordis 本体的完整逐机制解析另见姊妹报告《[Cordis 源码深度解析](https://github.com/xiaonancs/cordis-source-analysis/blob/main/README.md)》（基线 rc.9 / `00278924`；本 Part V 为更早的 rc.7/rc.8 快照，行号不可互引）。
 - **Part VI 开发规范与贡献工作流**（Ch30–33）：从 `docs/cookbook`、`development`/`testing`、`i18n/` 与 `.agents/skills` 提炼"怎么给 dsh 写代码"——贡献流程与工程门禁、修改配方、代码评审与 stacked-PR、文档与双语规范。
 - **Part VII 设计决策志**（Ch34–35）：把 `.agents/notes` 的 507 篇决策记录与 `docs/postmortem` 提炼成设计决策地图，以及事故复盘与不变量。
 

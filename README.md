@@ -89,7 +89,7 @@ DeepSeek Harness 是 DeepSeek 开源的 agent 运行框架，核心理念是**�
 
 对 dsh 的底座框架 [cordiverse/cordis](https://github.com/cordiverse/cordis) 单独跑一遍源码深度解析（Shigma 主导 537/550 commits，4 年演进）。
 
-> 🔗 **姊妹报告**：对 Cordis 本体的完整逐机制源码解析，另见独立报告《[Cordis 源码深度解析](../cordis-source-analysis/README.md)》（15 章，基线 **rc.9 / `00278924`**）。本 Part V 分析的是 dsh 采用时更早的 vendored / 上游快照（**rc.7/rc.8**），其 `文件:行号` 与该报告不同——**读 Cordis 本体机制以 rc.9 报告为准，本 Part V 侧重 Cordis 作为 dsh 底座如何被消费**。该报告 [Ch15](../cordis-source-analysis/Part%20IV%20Comparison%20and%20Relations/15-三者关系与dsh握手.md) 与本报告双向握手，并给出两报告逐章对读映射。
+> 🔗 **姊妹报告**：对 Cordis 本体的完整逐机制源码解析，另见独立报告《[Cordis 源码深度解析](https://github.com/xiaonancs/cordis-source-analysis/blob/main/README.md)》（15 章，基线 **rc.9 / `00278924`**）。本 Part V 分析的是 dsh 采用时更早的 vendored / 上游快照（**rc.7/rc.8**），其 `文件:行号` 与该报告不同——**读 Cordis 本体机制以 rc.9 报告为准，本 Part V 侧重 Cordis 作为 dsh 底座如何被消费**。该报告 [Ch15](https://github.com/xiaonancs/cordis-source-analysis/blob/main/Part%20IV%20Comparison%20and%20Relations/15-三者关系与dsh握手.md) 与本报告双向握手，并给出两报告逐章对读映射。
 
 | 章 | 标题 | 提要 |
 |---|---|---|

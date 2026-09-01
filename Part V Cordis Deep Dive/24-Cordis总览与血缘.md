@@ -2,7 +2,7 @@
 
 > 读完本章你能回答：Cordis 到底是什么框架、它从哪里长出来、由谁维护到什么成熟度，以及它为什么会出现在 DeepSeek Harness（下称 dsh）的代码里。这是 Part V 的开篇，只搭骨架、认门牌——具体的 Context 机制、fiber 生命周期与 dsh 的接入细节，分别留给 Ch25 及之后、Ch29 与 Part III Ch21。
 
-> 🔗 **对读提示（基线）**：本 Part V 分析的是 dsh 采用时的较早快照（vendored `rc.7` / 上游 `rc.8`）。对 Cordis 本体最新基线（**rc.9**，commit `00278924`）的逐机制源码解析，见独立姊妹报告《[Cordis 源码深度解析](../../cordis-source-analysis/README.md)》——两者 `文件:行号` 不可互引：读 Cordis 本体以 rc.9 报告为准，本篇侧重它如何作为 dsh 的底座被采用。
+> 🔗 **对读提示（基线）**：本 Part V 分析的是 dsh 采用时的较早快照（vendored `rc.7` / 上游 `rc.8`）。对 Cordis 本体最新基线（**rc.9**，commit `00278924`）的逐机制源码解析，见独立姊妹报告《[Cordis 源码深度解析](https://github.com/xiaonancs/cordis-source-analysis/blob/main/README.md)》——两者 `文件:行号` 不可互引：读 Cordis 本体以 rc.9 报告为准，本篇侧重它如何作为 dsh 的底座被采用。
 
 如果你第一次打开 `repo/cordis/`，大概率会愣一下：一个自称"框架"的仓库，核心目录 `packages/core/src/` 一共只有 9 个 `.ts` 文件、不到 1900 行。它不是那种堆满功能的"大而全"库，而更像一台**微内核（microkernel）**——内核只管最小的一组抽象，其余能力全部以插件的形式挂上去。本章先把这台内核的"身份证"看清楚。
 
